@@ -7,24 +7,12 @@ import { getToken } from 'next-auth/jwt';
 // ===========================================
 
 const PROTECTED_ROUTES = [
-    '/round1',
     '/round2',
-    '/leaderboard',
-    '/api/leaderboard',
-    '/api/question',
-    '/api/sync-score',
-    '/api/teamscore',
     '/api/team/update',
     '/api/Round-2',
 ];
 
-const ROUND2_ROUTES = [
-    '/round2',
-    '/api/Round-2',
-];
-
 const CSRF_PROTECTED_ROUTES = [
-    '/api/sync-score',
     '/api/team/update',
     '/api/Round-2/sync',
 ];
@@ -148,19 +136,6 @@ export async function proxy(request: NextRequest) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
 
-        const isRound2Route = ROUND2_ROUTES.some(route =>
-            pathname.startsWith(route)
-        );
-
-        if (isRound2Route && !token.hasRound2Access) {
-            if (pathname.startsWith('/api/')) {
-                return NextResponse.json(
-                    { error: 'You have not qualified for Round 2' },
-                    { status: 403 }
-                );
-            }
-            return NextResponse.redirect(new URL('/round1', request.url));
-        }
     }
 
     return response;

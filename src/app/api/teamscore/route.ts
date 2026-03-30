@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 // POST ENDPOINT REMOVED FOR SECURITY
 // ===========================================
 // The POST endpoint has been intentionally removed to prevent score manipulation.
-// Scores can ONLY be updated via /api/sync-score which validates submissions
+// Scores are updated by server-side validated sync flows, not direct client writes
 // against the Codeforces API to ensure integrity.
 // 
 // If you need to reset or modify scores, use the scripts or

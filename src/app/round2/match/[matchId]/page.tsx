@@ -65,7 +65,7 @@ export default function Round2MatchPage() {
     const json = await res.json();
 
     if (!json.success) {
-      router.push('/round1');
+      router.push('/round2');
       return;
     }
 
