@@ -1,14 +1,15 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 /**
- * Match Interface
- * - Quarterfinals: 4 teams per side
- * - Semifinals: 2 teams per side
- * - Finals: 1 team per side
+ * Match Interface - Updated for Multi-Round Format (A, B, C)
+ * - Round A (Easy): Multiple 4v4 matches (eliminates 40%)
+ * - Round B (Medium): Multiple matches (eliminates 60% of remaining)
+ * - Round C (Hard): Finals (only top 3 winners)
  */
 export interface IMatch extends Document {
-  roundNumber: number; // 1, 2, or 3
-
+  roundStage: 'A' | 'B' | 'C'; // Round difficulty (REPLACES roundNumber)
+  matchNumber: number; // Match 1, 2, 3, etc within a round
+  
   sideA_teamIds: Types.ObjectId[];
   sideA_handles: string[];
 
@@ -34,10 +35,16 @@ export interface IMatch extends Document {
 
 const MatchSchema = new Schema<IMatch>(
   {
-    roundNumber: {
+    roundStage: {
+      type: String,
+      required: true,
+      enum: ['A', 'B', 'C'],
+    },
+    
+    matchNumber: {
       type: Number,
       required: true,
-      enum: [1, 2, 3],
+      default: 1,
     },
     
     sideA_teamIds: [{
@@ -73,7 +80,6 @@ const MatchSchema = new Schema<IMatch>(
       default: 50,
     },
     
-    // Status
     status: {
       type: String,
       required: true,
@@ -113,8 +119,9 @@ const MatchSchema = new Schema<IMatch>(
   }
 );
 
-MatchSchema.index({ roundNumber: 1 }, { unique: true });
+MatchSchema.index({ roundStage: 1, matchNumber: 1 }, { unique: true });
 MatchSchema.index({ status: 1 });
+MatchSchema.index({ roundStage: 1, status: 1 });
 MatchSchema.index({ sideA_teamIds: 1 });
 MatchSchema.index({ sideB_teamIds: 1 });
 
