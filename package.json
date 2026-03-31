@@ -10,6 +10,8 @@
     "seed": "tsx scripts/seed.ts",
     "setup": "tsx scripts/setupDatabase.ts",
     "setup-r2-test": "tsx scripts/setup-round2-test-db.ts",
+    "setup-r2-semis": "tsx scripts/setup-round2-test-db.ts manmaychakarborty@gmail.com 2",
+    "setup-r2-finals": "tsx scripts/setup-round2-test-db.ts manmaychakarborty@gmail.com 3",
     "seed-round2": "tsx scripts/seed-round2-questions.ts",
     "initialize-tournament": "tsx scripts/initialize-tournament.ts",
     "view-bracket": "tsx scripts/view-bracket.ts",

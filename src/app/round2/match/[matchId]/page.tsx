@@ -30,6 +30,7 @@ interface PowerUpState {
   attemptCount: number;
   totalDelta: number;
   fullMarks: number;
+  effectLabel: 'ADD_POINTS' | 'DOUBLE_CURRENT_SCORE';
   question: {
     contestId: string;
     problemIndex: string;
@@ -183,7 +184,30 @@ export default function Round2MatchPage() {
   const my = mySide === 'A' ? data.match.sideA : data.match.sideB;
   const opp = mySide === 'A' ? data.match.sideB : data.match.sideA;
   const powerUp = data.match.powerUp;
-  const isSemifinals = data.match.roundNumber === 2 && !!powerUp?.available;
+  const hasRoundPowerUp = (data.match.roundNumber === 2 || data.match.roundNumber === 3) && !!powerUp?.available;
+  const powerUpLabel = data.match.roundNumber === 3 ? 'Finals Power-Up' : 'Semifinals Power-Up';
+  const powerUpSummary = data.match.roundNumber === 3
+    ? 'Gamble your current score on one special bitwise problem. Clear it fully and your side score doubles. Miss a single test and nothing changes.'
+    : 'Pause the standard flow and attack a lighter combinatorics steal problem for a faster score swing.';
+  const introTitle = data.match.roundNumber === 3 ? 'Double or Nothing' : 'Steal Option';
+  const introBody = data.match.roundNumber === 3
+    ? [
+        'In Finals, your team can gamble its current score by attempting one special Double or Nothing problem instead of sticking to the assigned pace.',
+        'If you solve the special problem completely, your current side score is doubled instantly.',
+        'If even one test case fails, your score remains exactly the same. No bonus, no penalty.',
+      ]
+    : [
+        'In Semifinals, your team can either stay on the assigned track or attempt a special Steal problem that is easier and faster to convert into points.',
+        'If you solve the Steal problem, your side gets full marks. If you fail, the system deducts points progressively based on how far the submission reached before failing.',
+        'All scoring still happens through Codeforces submissions on your saved handle, and the match sync will pick them up automatically.',
+      ];
+  const rewardText = powerUp?.effectLabel === 'DOUBLE_CURRENT_SCORE' ? 'x2 Score' : `+${powerUp?.fullMarks ?? 0}`;
+  const failedText = powerUp?.effectLabel === 'DOUBLE_CURRENT_SCORE'
+    ? 'No Change'
+    : 'Penalty';
+  const failedDescription = powerUp?.effectLabel === 'DOUBLE_CURRENT_SCORE'
+    ? 'Any non-accepted verdict leaves your score untouched.'
+    : 'Deduction scales with how deep the failed run reached before it broke.';
 
   const BASE_SCORE = 50;
   const MAX_SCORE = 75;
@@ -331,18 +355,18 @@ export default function Round2MatchPage() {
           )}
         </section>
 
-        {isSemifinals && powerUp && (
+        {hasRoundPowerUp && powerUp && (
           <section className="border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(8,8,8,0.96))] p-6 space-y-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-2">
                 <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">
-                  Semifinals Power-Up
+                  {powerUpLabel}
                 </p>
                 <h2 className="text-2xl font-black uppercase tracking-widest text-white">
                   {powerUp.title}
                 </h2>
                 <p className="max-w-2xl text-sm uppercase tracking-wider text-white/60">
-                  Pause the standard flow and attack a lighter combinatorics steal problem for a faster score swing.
+                  {powerUpSummary}
                 </p>
               </div>
 
@@ -357,7 +381,7 @@ export default function Round2MatchPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="border border-white/10 bg-black/20 p-4 rounded-lg">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Reward</p>
-                <p className="mt-2 text-2xl font-black text-emerald-300">+{powerUp.fullMarks}</p>
+                <p className="mt-2 text-2xl font-black text-emerald-300">{rewardText}</p>
               </div>
               <div className="border border-white/10 bg-black/20 p-4 rounded-lg">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Attempts Logged</p>
@@ -444,18 +468,12 @@ export default function Round2MatchPage() {
           <div className="w-full max-w-3xl border border-amber-400/30 bg-[#090909] p-8 shadow-[0_24px_80px_rgba(245,158,11,0.15)]">
             <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">Power-Up Briefing</p>
             <h2 className="mt-3 text-3xl font-black uppercase tracking-widest text-white">
-              Steal Option
+              {introTitle}
             </h2>
             <div className="mt-6 space-y-4 text-sm uppercase tracking-wider text-white/70">
-              <p>
-                In Semifinals, your team can either stay on the assigned track or attempt a special Steal problem that is easier and faster to convert into points.
-              </p>
-              <p>
-                If you solve the Steal problem, your side gets full marks. If you fail, the system deducts points progressively based on how far the submission reached before failing.
-              </p>
-              <p>
-                All scoring still happens through Codeforces submissions on your saved handle, and the match sync will pick them up automatically.
-              </p>
+              {introBody.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
             </div>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -508,7 +526,7 @@ export default function Round2MatchPage() {
                     {powerUp.question.problemIndex}. {powerUp.question.name}
                   </h2>
                   <p className="text-sm uppercase tracking-wider text-white/60">
-                    Contest {powerUp.question.contestId} • Semifinals-only power-up
+                    Contest {powerUp.question.contestId} • {data.match.roundName} power-up
                   </p>
                 </div>
                 <div className="flex gap-3">
@@ -534,7 +552,7 @@ export default function Round2MatchPage() {
                     <div className="mt-4 space-y-3 text-sm uppercase tracking-wider text-white/70">
                       <p>Open the problem in a new tab, solve it there, and submit using the same Codeforces handle linked to your team.</p>
                       <p>Come back to this match screen after submitting. The live sync runs automatically every 30 seconds, so your score update will be reflected here.</p>
-                      <p>Once you solve the Steal problem, the power-up is considered consumed for this match.</p>
+                      <p>Once you solve the special problem, the power-up is considered consumed for this match.</p>
                     </div>
                   </div>
 
@@ -543,14 +561,16 @@ export default function Round2MatchPage() {
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <div className="border border-emerald-400/20 bg-emerald-400/10 p-4 rounded-lg">
                         <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-200/70">Solved</p>
-                        <p className="mt-2 text-3xl font-black text-emerald-300">+{powerUp.fullMarks}</p>
-                        <p className="mt-2 text-xs uppercase tracking-widest text-emerald-100/60">Full marks granted instantly</p>
+                        <p className="mt-2 text-3xl font-black text-emerald-300">{rewardText}</p>
+                        <p className="mt-2 text-xs uppercase tracking-widest text-emerald-100/60">
+                          {powerUp.effectLabel === 'DOUBLE_CURRENT_SCORE' ? 'Your current side score doubles instantly' : 'Full marks granted instantly'}
+                        </p>
                       </div>
                       <div className="border border-red-400/20 bg-red-400/10 p-4 rounded-lg">
                         <p className="text-[10px] uppercase tracking-[0.3em] text-red-200/70">Failed</p>
-                        <p className="mt-2 text-3xl font-black text-red-300">Penalty</p>
+                        <p className="mt-2 text-3xl font-black text-red-300">{failedText}</p>
                         <p className="mt-2 text-xs uppercase tracking-widest text-red-100/60">
-                          Deduction scales with how deep the failed run reached before it broke.
+                          {failedDescription}
                         </p>
                       </div>
                     </div>

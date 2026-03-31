@@ -20,6 +20,7 @@ interface CFSubmission {
 }
 
 export const STEAL_POWER_UP = {
+  roundNumber: 2,
   key: 'semifinals-steal',
   title: 'Steal Option',
   contestId: '1771',
@@ -29,10 +30,29 @@ export const STEAL_POWER_UP = {
   fullMarks: 10,
 };
 
-function isStealSubmission(submission: CFSubmission) {
+export const DOUBLE_OR_NOTHING_POWER_UP = {
+  roundNumber: 3,
+  key: 'finals-double-or-nothing',
+  title: 'Double or Nothing',
+  contestId: '2171',
+  problemIndex: 'C1',
+  name: 'A Gift From Orangutan',
+  url: 'https://codeforces.com/problemset/problem/2171/C1',
+  fullMarks: 0,
+};
+
+const POWER_UPS = [STEAL_POWER_UP, DOUBLE_OR_NOTHING_POWER_UP] as const;
+
+type PowerUpConfig = (typeof POWER_UPS)[number];
+
+function getPowerUpForRound(roundNumber: number): PowerUpConfig | null {
+  return POWER_UPS.find((powerUp) => powerUp.roundNumber === roundNumber) || null;
+}
+
+function isPowerUpSubmission(submission: CFSubmission, powerUp: PowerUpConfig) {
   return (
-    String(submission.contestId) === STEAL_POWER_UP.contestId &&
-    submission.problem.index.toUpperCase() === STEAL_POWER_UP.problemIndex
+    String(submission.contestId) === powerUp.contestId &&
+    submission.problem.index.toUpperCase() === powerUp.problemIndex
   );
 }
 
@@ -48,7 +68,13 @@ export async function processStealPowerUpSubmissions(
 ) {
   const match = await Match.findById(matchId);
 
-  if (!match || match.roundNumber !== 2) {
+  if (!match) {
+    return null;
+  }
+
+  const powerUp = getPowerUpForRound(match.roundNumber);
+
+  if (!powerUp) {
     return null;
   }
 
@@ -57,7 +83,7 @@ export async function processStealPowerUpSubmissions(
     return (
       submission.creationTimeSeconds >= (match.startTime ? match.startTime.getTime() / 1000 : 0) &&
       !!handle &&
-      isStealSubmission(submission)
+      isPowerUpSubmission(submission, powerUp)
     );
   });
 
@@ -92,7 +118,7 @@ export async function processStealPowerUpSubmissions(
     const alreadySolved = await PowerUpAttempt.findOne({
       matchId: match._id,
       teamId,
-      powerUpKey: STEAL_POWER_UP.key,
+      powerUpKey: powerUp.key,
       verdict: 'OK',
     });
 
@@ -100,18 +126,28 @@ export async function processStealPowerUpSubmissions(
       continue;
     }
 
-    const pointsDelta = submission.verdict === 'OK'
-      ? STEAL_POWER_UP.fullMarks
-      : calculateStealPenalty(submission);
+    let pointsDelta = 0;
+
+    if (powerUp.key === STEAL_POWER_UP.key) {
+      pointsDelta = submission.verdict === 'OK'
+        ? STEAL_POWER_UP.fullMarks
+        : calculateStealPenalty(submission);
+    } else if (powerUp.key === DOUBLE_OR_NOTHING_POWER_UP.key) {
+      if (submission.verdict === 'OK') {
+        pointsDelta = side === 'A' ? match.scoreA : match.scoreB;
+      } else {
+        pointsDelta = 0;
+      }
+    }
 
     await PowerUpAttempt.create({
       matchId: match._id,
       teamId,
       side,
-      powerUpKey: STEAL_POWER_UP.key,
+      powerUpKey: powerUp.key,
       codeforcesHandle: handle,
-      contestId: STEAL_POWER_UP.contestId,
-      problemIndex: STEAL_POWER_UP.problemIndex,
+      contestId: powerUp.contestId,
+      problemIndex: powerUp.problemIndex,
       submissionId: submission.id,
       verdict: submission.verdict || 'UNKNOWN',
       passedTestCount: submission.passedTestCount ?? 0,
@@ -150,10 +186,22 @@ export async function processStealPowerUpSubmissions(
 }
 
 export async function getStealPowerUpState(matchId: Types.ObjectId | string, teamId: Types.ObjectId | string) {
+  const match = await Match.findById(matchId).lean();
+
+  if (!match) {
+    return null;
+  }
+
+  const powerUp = getPowerUpForRound(match.roundNumber);
+
+  if (!powerUp) {
+    return null;
+  }
+
   const attempts = await PowerUpAttempt.find({
     matchId,
     teamId,
-    powerUpKey: STEAL_POWER_UP.key,
+    powerUpKey: powerUp.key,
   })
     .sort({ timestamp: 1 })
     .lean();
@@ -162,19 +210,20 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
   const totalDelta = attempts.reduce((sum, attempt) => sum + attempt.pointsDelta, 0);
 
   return {
-    key: STEAL_POWER_UP.key,
-    title: STEAL_POWER_UP.title,
+    key: powerUp.key,
+    title: powerUp.title,
     question: {
-      contestId: STEAL_POWER_UP.contestId,
-      problemIndex: STEAL_POWER_UP.problemIndex,
-      name: STEAL_POWER_UP.name,
-      url: STEAL_POWER_UP.url,
+      contestId: powerUp.contestId,
+      problemIndex: powerUp.problemIndex,
+      name: powerUp.name,
+      url: powerUp.url,
     },
     available: true,
     solved: Boolean(solvedAttempt),
     attemptCount: attempts.length,
     totalDelta,
-    fullMarks: STEAL_POWER_UP.fullMarks,
+    fullMarks: powerUp.fullMarks,
+    effectLabel: powerUp.key === DOUBLE_OR_NOTHING_POWER_UP.key ? 'DOUBLE_CURRENT_SCORE' : 'ADD_POINTS',
     attempts: attempts.map((attempt) => ({
       submissionId: attempt.submissionId,
       verdict: attempt.verdict,

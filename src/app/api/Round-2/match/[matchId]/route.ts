@@ -88,7 +88,7 @@ export async function GET(
     );
 
     const timeRemaining = getTimeRemaining(match);
-    const powerUp = match.roundNumber === 2
+    const powerUp = (match.roundNumber === 2 || match.roundNumber === 3)
       ? await getStealPowerUpState(match._id, teamId)
       : null;
 
