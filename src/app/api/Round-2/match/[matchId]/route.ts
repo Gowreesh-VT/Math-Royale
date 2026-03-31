@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db';
 import Match from '@/models/Match';
 import MatchSubmission from '@/models/MatchSubmission';
 import { getTimeRemaining } from '@/services/TugOfWarScores';
+import { getStealPowerUpState } from '@/services/powerUpService';
 import mongoose from 'mongoose';
 
 /**
@@ -87,6 +88,9 @@ export async function GET(
     );
 
     const timeRemaining = getTimeRemaining(match);
+    const powerUp = match.roundNumber === 2
+      ? await getStealPowerUpState(match._id, teamId)
+      : null;
 
     const roundNames: Record<number, string> = {
       1: 'Quarterfinals',
@@ -150,6 +154,7 @@ export async function GET(
         duration: match.duration,
         startTime: match.startTime,
         endTime: match.endTime,
+        powerUp,
       },
     });
 

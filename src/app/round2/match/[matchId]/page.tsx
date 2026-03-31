@@ -1,14 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useSession, signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { secureFetch } from '@/lib/csrf';
-
-
-
-/* ---------------- TYPES ---------------- */
 
 interface Question {
   id: string;
@@ -22,47 +18,69 @@ interface Question {
 interface SideData {
   score: number;
   questions: Question[];
+  teams: Array<{ id: string; name: string; handle: string | null }>;
+  handles: string[];
+}
+
+interface PowerUpState {
+  key: string;
+  title: string;
+  available: boolean;
+  solved: boolean;
+  attemptCount: number;
+  totalDelta: number;
+  fullMarks: number;
+  question: {
+    contestId: string;
+    problemIndex: string;
+    name: string;
+    url: string;
+  };
+  attempts: Array<{
+    submissionId: number;
+    verdict: string;
+    passedTestCount: number;
+    pointsDelta: number;
+    timestamp: string;
+  }>;
 }
 
 interface MatchResponse {
   success: boolean;
   match: {
+    roundNumber: number;
     roundName: string;
     status: 'active' | 'completed';
     timeRemaining: number;
     winningSide: 'A' | 'B' | null;
     sideA: SideData;
     sideB: SideData;
+    powerUp: PowerUpState | null;
   };
 }
-
-/* ---------------- PAGE ---------------- */
 
 export default function Round2MatchPage() {
   const { matchId } = useParams<{ matchId: string }>();
   const router = useRouter();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { data: session } = useSession();
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPowerUpIntro, setShowPowerUpIntro] = useState(false);
+  const [showPowerUpOverlay, setShowPowerUpOverlay] = useState(false);
   const [data, setData] = useState<MatchResponse | null>(null);
   const [mySide, setMySide] = useState<'A' | 'B'>('A');
   const [timeRemaining, setTimeRemaining] = useState<number>(2700);
   const [loading, setLoading] = useState(true);
 
-  const teamId: string = session?.user?.teamId || "";
-
-  const handleLogoutClick = () => {
-    setShowLogoutModal(true);
-  };
+  const teamId = session?.user?.teamId || '';
 
   const handleConfirmLogout = async () => {
     await signOut({ callbackUrl: '/' });
   };
 
-
-  /* ---------- FETCH MATCH STATE ---------- */
   const fetchMatch = useCallback(async () => {
     const res = await fetch(`/api/Round-2/match/${matchId}`);
-    const json = await res.json();
+    const json: MatchResponse = await res.json();
 
     if (!json.success) {
       router.push('/round2');
@@ -76,9 +94,9 @@ export default function Round2MatchPage() {
     }
 
     if (teamId) {
-      const isInSideA = json.match.sideA.teams.some((t: any) => t.id === teamId);
-      const isInSideB = json.match.sideB.teams.some((t: any) => t.id === teamId);
-      
+      const isInSideA = json.match.sideA.teams.some((team) => team.id === teamId);
+      const isInSideB = json.match.sideB.teams.some((team) => team.id === teamId);
+
       if (isInSideA) {
         setMySide('A');
       } else if (isInSideB) {
@@ -92,25 +110,25 @@ export default function Round2MatchPage() {
         }
       }
     }
-    setLoading(false);
-  }, [matchId, router, teamId, session?.user?.codeforcesHandle]);
 
-  // /* ---------- MATCH POLLING ---------- */
+    setLoading(false);
+  }, [matchId, router, session?.user?.codeforcesHandle, teamId]);
+
   useEffect(() => {
     fetchMatch();
     const poll = setInterval(fetchMatch, 7000);
     return () => clearInterval(poll);
   }, [fetchMatch]);
 
-  /* ---------- COUNTDOWN TIMER ---------- */
   useEffect(() => {
-    if (!data || data.match.status !== 'active') return;
-    
+    if (!data || data.match.status !== 'active') {
+      return;
+    }
+
     const countdown = setInterval(() => {
-      setTimeRemaining(prev => {
+      setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(countdown);
-
           fetch('/api/Round-2/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -118,19 +136,16 @@ export default function Round2MatchPage() {
           }).then(() => fetchMatch());
           return 0;
         }
+
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(countdown);
-  }, [data?.match?.status, matchId, teamId, fetchMatch]);
+  }, [data?.match?.status, fetchMatch, matchId]);
 
-  /* ---------- AUTO SYNC  ---------- */
   useEffect(() => {
-    if (!data) {
-      return;
-    }
-    if (data.match.status !== 'active') {
+    if (!data || data.match.status !== 'active') {
       return;
     }
 
@@ -139,18 +154,15 @@ export default function Round2MatchPage() {
         const res = await secureFetch('/api/Round-2/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            matchId,
-          }),
+          body: JSON.stringify({ matchId }),
         });
         const result = await res.json();
-        
+
         if (result.success) {
           fetchMatch();
         }
-      } catch (err) {
-        // Only log errors, not success data
-        console.error('[Sync] Failed:', err);
+      } catch (error) {
+        console.error('[Sync] Failed:', error);
       }
     };
 
@@ -158,7 +170,7 @@ export default function Round2MatchPage() {
 
     const interval = setInterval(sync, 30000);
     return () => clearInterval(interval);
-  }, [data?.match?.status, matchId, teamId, fetchMatch]);
+  }, [data?.match?.status, fetchMatch, matchId]);
 
   if (loading || !data) {
     return (
@@ -170,10 +182,12 @@ export default function Round2MatchPage() {
 
   const my = mySide === 'A' ? data.match.sideA : data.match.sideB;
   const opp = mySide === 'A' ? data.match.sideB : data.match.sideA;
+  const powerUp = data.match.powerUp;
+  const isSemifinals = data.match.roundNumber === 2 && !!powerUp?.available;
+
   const BASE_SCORE = 50;
   const MAX_SCORE = 75;
   const WIN_RANGE = MAX_SCORE - BASE_SCORE;
-
 
   let pullPercentage = 50;
 
@@ -185,33 +199,24 @@ export default function Round2MatchPage() {
   } else if (opp.score >= MAX_SCORE && my.score < MAX_SCORE) {
     pullPercentage = 100;
   } else if (my.score >= MAX_SCORE && opp.score >= MAX_SCORE) {
-
     pullPercentage = my.score > opp.score ? 0 : (opp.score > my.score ? 100 : 50);
   } else {
-
     const totalProgress = myProgress + oppProgress;
-    
+
     if (totalProgress > 0) {
       pullPercentage = (oppProgress / totalProgress) * 100;
     } else if (my.score < BASE_SCORE || opp.score < BASE_SCORE) {
-
       const diff = my.score - opp.score;
       pullPercentage = 50 - (diff / WIN_RANGE) * 50;
       pullPercentage = Math.max(0, Math.min(100, pullPercentage));
     } else {
-
       pullPercentage = 50;
     }
   }
 
-
-  /* ---------------- UI ---------------- */
-
   return (
     <div className="min-h-screen bg-[#050505] text-white px-6 py-8">
       <main className="max-w-5xl mx-auto space-y-12">
-
-        {/* ---------- HEADER ---------- */}
         <header className="border-b flex items-center flex-wrap justify-between border-white/10 pb-6">
           <div className="flex flex-col gap-2">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-purple-500/30 bg-purple-500/10 rounded-lg w-fit mb-1">
@@ -225,32 +230,37 @@ export default function Round2MatchPage() {
               • Live Match
             </p>
           </div>
+
           <div className="flex flex-col items-start lg:items-end gap-4">
             <div className="flex items-center gap-3">
-              {/* Timer Display */}
-              <div className={`px-5 py-2 rounded-lg border ${
-                timeRemaining <= 300 
-                  ? 'border-red-500/50 bg-red-500/10' 
-                  : timeRemaining <= 600 
-                    ? 'border-yellow-500/50 bg-yellow-500/10' 
-                    : 'border-white/20 bg-white/5'
-              }`}>
+              <div
+                className={`px-5 py-2 rounded-lg border ${
+                  timeRemaining <= 300
+                    ? 'border-red-500/50 bg-red-500/10'
+                    : timeRemaining <= 600
+                      ? 'border-yellow-500/50 bg-yellow-500/10'
+                      : 'border-white/20 bg-white/5'
+                }`}
+              >
                 <div className="flex flex-col items-center">
                   <p className="text-[10px] uppercase tracking-widest text-white/40 mb-0.5">Time Remaining</p>
-                  <p className={`text-3xl font-mono font-bold ${
-                    timeRemaining <= 300 
-                      ? 'text-red-400' 
-                      : timeRemaining <= 600 
-                        ? 'text-yellow-400' 
-                        : 'text-white'
-                  }`}>
-                    {Math.floor(timeRemaining / 60).toString().padStart(2, '0')}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                  <p
+                    className={`text-3xl font-mono font-bold ${
+                      timeRemaining <= 300
+                        ? 'text-red-400'
+                        : timeRemaining <= 600
+                          ? 'text-yellow-400'
+                          : 'text-white'
+                    }`}
+                  >
+                    {Math.floor(timeRemaining / 60).toString().padStart(2, '0')}:
+                    {(timeRemaining % 60).toString().padStart(2, '0')}
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={handleLogoutClick}
+                onClick={() => setShowLogoutModal(true)}
                 className="px-4 py-2 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 font-ui text-[10px] uppercase tracking-widest transition-all rounded-lg"
               >
                 Logout
@@ -259,7 +269,6 @@ export default function Round2MatchPage() {
           </div>
         </header>
 
-        {/* ---------- SCORE & ROPE ---------- */}
         <section className="space-y-4">
           <div className="flex justify-between text-sm uppercase tracking-widest text-white/60">
             <span>Your Side</span>
@@ -267,12 +276,8 @@ export default function Round2MatchPage() {
           </div>
 
           <div className="flex justify-between text-4xl font-black">
-            <span className={my.score >= MAX_SCORE ? "text-green-400" : ""}>
-              {my.score}
-            </span>
-            <span className={opp.score >= MAX_SCORE ? "text-purple-400/80" : ""}>
-              {opp.score}
-            </span>
+            <span className={my.score >= MAX_SCORE ? 'text-green-400' : ''}>{my.score}</span>
+            <span className={opp.score >= MAX_SCORE ? 'text-purple-400/80' : ''}>{opp.score}</span>
           </div>
 
           <div className="relative h-6 rounded-full overflow-hidden bg-white/5 border border-white/10">
@@ -285,26 +290,23 @@ export default function Round2MatchPage() {
             <div className="absolute left-1/2 top-0 h-full w-[2px] bg-white/30" />
 
             <motion.div
-              animate={{
-                left: `${pullPercentage}%`
-              }}
+              animate={{ left: `${pullPercentage}%` }}
               transition={{
                 type: 'spring',
                 stiffness: my.score >= MAX_SCORE || opp.score >= MAX_SCORE ? 80 : 140,
-                damping: my.score >= MAX_SCORE || opp.score >= MAX_SCORE ? 12 : 18
+                damping: my.score >= MAX_SCORE || opp.score >= MAX_SCORE ? 12 : 18,
               }}
-              className={`absolute top-0 -translate-x-1/2
-     w-36 h-full bg-white
-     shadow-[0_0_30px_rgba(255,255,255,0.8)]
-     ring-1 ring-white/40 z-10
-     ${(my.score >= MAX_SCORE || opp.score >= MAX_SCORE) ? 'text-purple-300/80 shadow-[0_0_40px_rgba(34,197,94,0.9)]' : ''}`}
+              className={`absolute top-0 -translate-x-1/2 w-36 h-full bg-white ring-1 ring-white/40 z-10 ${
+                my.score >= MAX_SCORE || opp.score >= MAX_SCORE
+                  ? 'shadow-[0_0_40px_rgba(34,197,94,0.9)]'
+                  : 'shadow-[0_0_30px_rgba(255,255,255,0.8)]'
+              }`}
             />
 
             <div className="absolute left-2 top-0 h-full w-[2px] bg-white/40" />
             <div className="absolute right-2 top-0 h-full w-[2px] bg-white/40" />
           </div>
 
-          {/* POINT SYSTEM */}
           <div className="flex justify-center gap-6 text-[10px] uppercase tracking-widest text-white/40">
             <span>✔ Accepted: +10</span>
             <span>✖ Wrong: −5</span>
@@ -312,12 +314,8 @@ export default function Round2MatchPage() {
           </div>
 
           <div className="mt-3 text-center">
-            <span className="inline-block px-4 py-1 rounded-full border border-white/10 bg-white/5
-      text-xs uppercase tracking-widest text-white/70">
-              You are playing as&nbsp;
-              <span className="font-bold text-white">
-                Side {mySide}
-              </span>
+            <span className="inline-block px-4 py-1 rounded-full border border-white/10 bg-white/5 text-xs uppercase tracking-widest text-white/70">
+              You are playing as <span className="font-bold text-white">Side {mySide}</span>
             </span>
           </div>
 
@@ -328,52 +326,82 @@ export default function Round2MatchPage() {
               transition={{ type: 'spring', stiffness: 200 }}
               className="text-center text-purple-300/80 uppercase tracking-widest text-sm font-bold"
             >
-              🎉 Match Completed — Winner: Side {data.match.winningSide} 🎉
+              Match Completed — Winner: Side {data.match.winningSide}
             </motion.p>
           )}
         </section>
 
+        {isSemifinals && powerUp && (
+          <section className="border border-amber-400/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(8,8,8,0.96))] p-6 space-y-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">
+                  Semifinals Power-Up
+                </p>
+                <h2 className="text-2xl font-black uppercase tracking-widest text-white">
+                  {powerUp.title}
+                </h2>
+                <p className="max-w-2xl text-sm uppercase tracking-wider text-white/60">
+                  Pause the standard flow and attack a lighter combinatorics steal problem for a faster score swing.
+                </p>
+              </div>
 
+              <button
+                onClick={() => setShowPowerUpIntro(true)}
+                className="px-5 py-3 border border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-200 font-ui text-[10px] uppercase tracking-[0.3em] transition-all rounded-lg"
+              >
+                {powerUp.solved ? 'View Steal Panel' : 'Activate Power-Up'}
+              </button>
+            </div>
 
-        {/* ---------- QUESTIONS ---------- */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="border border-white/10 bg-black/20 p-4 rounded-lg">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Reward</p>
+                <p className="mt-2 text-2xl font-black text-emerald-300">+{powerUp.fullMarks}</p>
+              </div>
+              <div className="border border-white/10 bg-black/20 p-4 rounded-lg">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Attempts Logged</p>
+                <p className="mt-2 text-2xl font-black text-white">{powerUp.attemptCount}</p>
+              </div>
+              <div className="border border-white/10 bg-black/20 p-4 rounded-lg">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Score Delta</p>
+                <p className={`mt-2 text-2xl font-black ${powerUp.totalDelta >= 0 ? 'text-amber-200' : 'text-red-300'}`}>
+                  {powerUp.totalDelta > 0 ? `+${powerUp.totalDelta}` : powerUp.totalDelta}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="space-y-4">
           <h2 className="text-xl font-black uppercase tracking-widest">
             Your Questions
           </h2>
 
           <div className="divide-y divide-white/10 border border-white/10 bg-[#0b0b0b]">
-            {my.questions.map(q => (
+            {my.questions.map((question) => (
               <div
-                key={q.id}
-                onClick={() =>
-                  window.open(
-                    `https://codeforces.com/contest/${q.contestId}/problem/${q.problemIndex}`,
-                    '_blank'
-                  )
-                }
+                key={question.id}
+                onClick={() => window.open(`https://codeforces.com/contest/${question.contestId}/problem/${question.problemIndex}`, '_blank')}
                 className="p-4 cursor-pointer hover:bg-white/5 flex justify-between items-center"
               >
                 <div>
                   <p className="font-bold">
-                    {q.problemIndex}. {q.name}
+                    {question.problemIndex}. {question.name}
                   </p>
                   <p className="text-xs text-white/40">
-                    Contest {q.contestId}
+                    Contest {question.contestId}
                   </p>
                 </div>
 
-                <span
-                  className={`text-xs uppercase tracking-widest ${q.solved ? 'text-green-400' : 'text-white/30'
-                    }`}
-                >
-                  {q.solved ? 'Solved' : 'Unsolved'}
+                <span className={`text-xs uppercase tracking-widest ${question.solved ? 'text-green-400' : 'text-white/30'}`}>
+                  {question.solved ? 'Solved' : 'Unsolved'}
                 </span>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ---------- POINT SYSTEM ---------- */}
         <section className="border-t border-white/10 pt-8 text-xs uppercase tracking-widest text-white/50 space-y-2">
           <p>Scoring System</p>
           <ul className="space-y-1">
@@ -383,6 +411,7 @@ export default function Round2MatchPage() {
           </ul>
         </section>
       </main>
+
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="bg-[#0b0b0b] border border-red-500/30 rounded-2xl p-8 max-w-md w-full mx-4 shadow-[0_20px_60px_rgba(239,68,68,0.2)]">
@@ -409,8 +438,182 @@ export default function Round2MatchPage() {
           </div>
         </div>
       )}
+
+      {showPowerUpIntro && powerUp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm px-4">
+          <div className="w-full max-w-3xl border border-amber-400/30 bg-[#090909] p-8 shadow-[0_24px_80px_rgba(245,158,11,0.15)]">
+            <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">Power-Up Briefing</p>
+            <h2 className="mt-3 text-3xl font-black uppercase tracking-widest text-white">
+              Steal Option
+            </h2>
+            <div className="mt-6 space-y-4 text-sm uppercase tracking-wider text-white/70">
+              <p>
+                In Semifinals, your team can either stay on the assigned track or attempt a special Steal problem that is easier and faster to convert into points.
+              </p>
+              <p>
+                If you solve the Steal problem, your side gets full marks. If you fail, the system deducts points progressively based on how far the submission reached before failing.
+              </p>
+              <p>
+                All scoring still happens through Codeforces submissions on your saved handle, and the match sync will pick them up automatically.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="border border-white/10 bg-white/5 p-4">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Target Problem</p>
+                <p className="mt-2 text-lg font-bold text-white">
+                  {powerUp.question.problemIndex}. {powerUp.question.name}
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-widest text-white/40">
+                  Contest {powerUp.question.contestId}
+                </p>
+              </div>
+              <div className="border border-white/10 bg-white/5 p-4">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Detection</p>
+                <p className="mt-2 text-sm uppercase tracking-wider text-white/70">
+                  The overlay does not submit code itself. Open the problem, submit on Codeforces, and this match screen will sync the result.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                onClick={() => setShowPowerUpIntro(false)}
+                className="px-5 py-3 border border-white/10 bg-white/5 hover:bg-white/10 text-white font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowPowerUpIntro(false);
+                  setShowPowerUpOverlay(true);
+                }}
+                className="px-5 py-3 border border-amber-400/40 bg-amber-400/15 hover:bg-amber-400/25 text-amber-200 font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+              >
+                I Agree, Open Power-Up
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPowerUpOverlay && powerUp && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md overflow-y-auto">
+          <div className="min-h-screen px-4 py-8">
+            <div className="mx-auto max-w-5xl border border-amber-400/30 bg-[#050505]">
+              <div className="flex flex-col gap-4 border-b border-white/10 p-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">Steal Overlay</p>
+                  <h2 className="text-3xl font-black uppercase tracking-widest text-white">
+                    {powerUp.question.problemIndex}. {powerUp.question.name}
+                  </h2>
+                  <p className="text-sm uppercase tracking-wider text-white/60">
+                    Contest {powerUp.question.contestId} • Semifinals-only power-up
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => window.open(powerUp.question.url, '_blank')}
+                    className="px-5 py-3 border border-amber-400/40 bg-amber-400/15 hover:bg-amber-400/25 text-amber-200 font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+                  >
+                    Open on Codeforces
+                  </button>
+                  <button
+                    onClick={() => setShowPowerUpOverlay(false)}
+                    className="px-5 py-3 border border-white/10 bg-white/5 hover:bg-white/10 text-white font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-6 p-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="space-y-6">
+                  <div className="border border-white/10 bg-white/5 p-5">
+                    <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">How to Use It</p>
+                    <div className="mt-4 space-y-3 text-sm uppercase tracking-wider text-white/70">
+                      <p>Open the problem in a new tab, solve it there, and submit using the same Codeforces handle linked to your team.</p>
+                      <p>Come back to this match screen after submitting. The live sync runs automatically every 30 seconds, so your score update will be reflected here.</p>
+                      <p>Once you solve the Steal problem, the power-up is considered consumed for this match.</p>
+                    </div>
+                  </div>
+
+                  <div className="border border-white/10 bg-white/5 p-5">
+                    <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">Scoring Rules</p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="border border-emerald-400/20 bg-emerald-400/10 p-4 rounded-lg">
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-200/70">Solved</p>
+                        <p className="mt-2 text-3xl font-black text-emerald-300">+{powerUp.fullMarks}</p>
+                        <p className="mt-2 text-xs uppercase tracking-widest text-emerald-100/60">Full marks granted instantly</p>
+                      </div>
+                      <div className="border border-red-400/20 bg-red-400/10 p-4 rounded-lg">
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-red-200/70">Failed</p>
+                        <p className="mt-2 text-3xl font-black text-red-300">Penalty</p>
+                        <p className="mt-2 text-xs uppercase tracking-widest text-red-100/60">
+                          Deduction scales with how deep the failed run reached before it broke.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="border border-white/10 bg-white/5 p-5">
+                    <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">Current State</p>
+                    <div className="mt-4 space-y-3 text-sm uppercase tracking-wider text-white/70">
+                      <div className="flex items-center justify-between">
+                        <span>Status</span>
+                        <span className={powerUp.solved ? 'text-emerald-300' : 'text-amber-200'}>
+                          {powerUp.solved ? 'Solved' : 'Available'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Attempts</span>
+                        <span>{powerUp.attemptCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Total Delta</span>
+                        <span className={powerUp.totalDelta >= 0 ? 'text-amber-200' : 'text-red-300'}>
+                          {powerUp.totalDelta > 0 ? `+${powerUp.totalDelta}` : powerUp.totalDelta}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border border-white/10 bg-white/5 p-5">
+                    <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">Attempt Log</p>
+                    <div className="mt-4 space-y-3">
+                      {powerUp.attempts.length === 0 && (
+                        <p className="text-xs uppercase tracking-widest text-white/35">
+                          No steal submissions detected yet.
+                        </p>
+                      )}
+                      {powerUp.attempts.map((attempt) => (
+                        <div
+                          key={attempt.submissionId}
+                          className="border border-white/10 bg-black/20 p-3 rounded-lg"
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <p className="text-xs uppercase tracking-widest text-white/70">
+                              {attempt.verdict}
+                            </p>
+                            <p className={`text-xs font-bold uppercase tracking-widest ${attempt.pointsDelta >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                              {attempt.pointsDelta > 0 ? `+${attempt.pointsDelta}` : attempt.pointsDelta}
+                            </p>
+                          </div>
+                          <p className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/35">
+                            Passed tests: {attempt.passedTestCount}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-
-
   );
 }
