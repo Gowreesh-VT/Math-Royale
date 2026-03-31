@@ -1,9 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { ArrowLeft, Terminal, Code2, Cpu, Network, Lock, Globe } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { Terminal, Cpu, Network, Lock, Globe } from 'lucide-react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -27,6 +28,14 @@ const GoogleIcon = () => (
 );
 
 export default function Login_Page() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    router.replace('/round2');
+  }, [status, router]);
+
   return (
     <main className="min-h-screen grid lg:grid-cols-2 bg-[#050505] relative overflow-hidden">
       {/* Left Side - Visuals */}
@@ -142,7 +151,7 @@ export default function Login_Page() {
           </div>
 
           <div className="space-y-4">
-            <button onClick={()=>{signIn("google",{callbackUrl:"/round1"})}} className="w-full bg-white hover:bg-gray-100 text-black font-ui font-bold py-4 px-6 rounded-none flex items-center justify-center gap-3 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]">
+            <button onClick={() => { signIn('google', { callbackUrl: '/login' }); }} className="w-full bg-white hover:bg-gray-100 text-black font-ui font-bold py-4 px-6 rounded-none flex items-center justify-center gap-3 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]">
               <GoogleIcon />
               <span>SIGN IN WITH GOOGLE</span>
             </button>
@@ -178,6 +187,7 @@ export default function Login_Page() {
           </div>
         </motion.div>
       </div>
+
     </main>
   );
 }
