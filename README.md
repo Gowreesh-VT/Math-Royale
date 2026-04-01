@@ -1,5 +1,31 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Setup
+
+This codebase reads its environment variables from `.env.local` for both the Next.js app and the tournament scripts.
+
+Start from the checked-in template:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Required variables:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/cp_event
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+NEXTAUTH_SECRET=replace_with_a_long_random_secret
+NEXTAUTH_URL=http://localhost:3000
+```
+
+Notes:
+- `MONGODB_URI` is used throughout the app and admin scripts.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `NEXTAUTH_SECRET` are required for login.
+- `NEXTAUTH_URL` is optional in local development, but recommended and effectively required in production deployments.
+- `NODE_ENV` is referenced by the code, but Next.js sets that automatically.
+
 ## Getting Started
 
 First, run the development server:

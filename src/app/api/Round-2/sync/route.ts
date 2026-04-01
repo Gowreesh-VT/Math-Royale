@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db';
 import Match from '@/models/Match';
 import { processMatchSubmissions } from '@/services/TugOfWarScores';
 import { fetchUserSubmissions } from '@/services/codeforcesService';
+import { processStealPowerUpSubmissions } from '@/services/powerUpService';
 import { checkRateLimit } from '@/lib/rateLimit';
 import mongoose from 'mongoose';
 
@@ -123,19 +124,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const syncResult = await processMatchSubmissions(matchId, allSubmissions);
+    await processMatchSubmissions(matchId, allSubmissions);
+    await processStealPowerUpSubmissions(matchId, allSubmissions);
+    const updatedMatch = await Match.findById(matchId);
+
+    if (!updatedMatch) {
+      return NextResponse.json(
+        { error: 'Match not found after sync' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
       match: {
-        matchId: match._id,
-        scoreA: syncResult.scoreA,
-        scoreB: syncResult.scoreB,
-        newSubmissions: syncResult.newSubmissions,
-        winningSide: syncResult.winningSide,
-        isTimeout: syncResult.isTimeout,
-        timeRemaining: syncResult.timeRemaining,
-        status: syncResult.matchStatus,
+        matchId: updatedMatch._id,
+        scoreA: updatedMatch.scoreA,
+        scoreB: updatedMatch.scoreB,
+        winningSide: updatedMatch.winningSide || null,
+        timeRemaining: updatedMatch.startTime
+          ? Math.max(0, updatedMatch.duration - Math.floor((Date.now() - updatedMatch.startTime.getTime()) / 1000))
+          : updatedMatch.duration,
+        status: updatedMatch.status,
       },
       warnings: errors.length > 0 ? errors : undefined,
     });

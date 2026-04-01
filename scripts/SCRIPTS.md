@@ -18,6 +18,8 @@ npm run stop-round1             # Manually stop
 ### Round 2 (Tug of War)
 ```bash
 npm run seed-round2             # Seed all Round 2 questions
+npm run setup-r2-semis          # Dev shortcut: active Semifinals test match
+npm run setup-r2-finals         # Dev shortcut: active Finals test match
 npm run view-top-teams          # View Round 1 top 8
 npm run initialize-tournament   # Create Quarterfinals
 npm run start-round 1           # Start Quarterfinals
@@ -64,6 +66,13 @@ npm run view-bracket            # Monitor tournament
 - **Usage:** `npm run seed-round2`
 - 8 questions per round (4 Side A + 4 Side B)
 - Run before initializing tournament
+
+**`setup-round2-test-db.ts`** - Seed a direct dev Round 2 match
+- **Usage:** `npm run setup-r2-test -- <email> <1|2|3>`
+- Creates a direct active Quarterfinals, Semifinals, or Finals dev match for the given email
+- Also available as shortcuts:
+  `npm run setup-r2-semis`
+  `npm run setup-r2-finals`
 
 **`view-top-teams.ts`** - View top 8 teams from Round 1
 - **Usage:** `npm run view-top-teams`
