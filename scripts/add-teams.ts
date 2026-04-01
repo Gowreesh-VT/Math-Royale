@@ -29,9 +29,9 @@ const teams = [
 
 async function addTeams() {
   try {
-    console.log('🔌 Connecting to MongoDB...');
+    console.log('Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI!);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
     console.log('');
 
     let successCount = 0;
@@ -44,7 +44,7 @@ async function addTeams() {
       try {
         // Validate required fields
         if (!teamData.teamName || !teamData.email) {
-          console.log(`⚠️  [${i + 1}/${teams.length}] Skipping - Missing required fields:`, teamData);
+          console.log(`[${i + 1}/${teams.length}] Skipping - Missing required fields:`, teamData);
           skipCount++;
           continue;
         }
@@ -58,7 +58,7 @@ async function addTeams() {
         });
 
         if (existing) {
-          console.log(`⏭️  [${i + 1}/${teams.length}] Skipping - Already exists: ${teamData.teamName} (${teamData.email})`);
+          console.log(`[${i + 1}/${teams.length}] Skipping - Already exists: ${teamData.teamName} (${teamData.email})`);
           skipCount++;
           continue;
         }
@@ -71,29 +71,29 @@ async function addTeams() {
           hasRound2Access: false,
         });
 
-        console.log(`✅ [${i + 1}/${teams.length}] Added: ${teamData.teamName} (${teamData.email})`);
+        console.log(`[${i + 1}/${teams.length}] Added: ${teamData.teamName} (${teamData.email})`);
         successCount++;
       } catch (error: any) {
-        console.error(`❌ [${i + 1}/${teams.length}] Error adding ${teamData.teamName}:`, error.message);
+        console.error(`[${i + 1}/${teams.length}] Error adding ${teamData.teamName}:`, error.message);
         errorCount++;
       }
     }
 
     console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 SUMMARY');
+    console.log('SUMMARY');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`✅ Successfully added: ${successCount}`);
-    console.log(`⏭️  Skipped (duplicates): ${skipCount}`);
-    console.log(`❌ Errors: ${errorCount}`);
-    console.log(`📝 Total processed: ${teams.length}`);
+    console.log(`Successfully added: ${successCount}`);
+    console.log(`Skipped (duplicates): ${skipCount}`);
+    console.log(`Errors: ${errorCount}`);
+    console.log(`Total processed: ${teams.length}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
 
     await mongoose.disconnect();
-    console.log('👋 Disconnected from MongoDB');
+    console.log('Disconnected from MongoDB');
   } catch (error) {
-    console.error('❌ Error adding teams:', error);
+    console.error('Error adding teams:', error);
     process.exit(1);
   }
 }

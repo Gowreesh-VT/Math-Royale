@@ -7,25 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx scripts/seed.ts",
+
     "setup": "tsx scripts/setupDatabase.ts",
     "setup-r2-test": "tsx scripts/setup-round2-test-db.ts",
+    "setup-r2-semis": "tsx scripts/setup-round2-test-db.ts manmaychakarborty@gmail.com B",
+    "setup-r2-finals": "tsx scripts/setup-round2-test-db.ts manmaychakarborty@gmail.com C",
     "seed-round2": "tsx scripts/seed-round2-questions.ts",
-    "initialize-tournament": "tsx scripts/initialize-tournament.ts",
-    "view-bracket": "tsx scripts/view-bracket.ts",
-    "view-top-teams": "tsx scripts/view-top-teams.ts",
-    "start-round": "tsx scripts/start-round.ts",
-    "start-match": "tsx scripts/start-match.ts",
-    "advance-round": "tsx scripts/advance-round.ts",
-    "start-round1": "tsx scripts/start-round1.ts",
-    "extend-round1": "tsx scripts/extend-round1.ts",
-    "stop-round1": "tsx scripts/stop-round1.ts",
-    "status-round1": "tsx scripts/status-round1.ts",
     "import-teams": "tsx scripts/import-teams.ts",
+    "view-leaderboard": "tsx scripts/view-leaderboard.ts",
     "delete-teams": "tsx scripts/delete-teams.ts",
     "format-teams": "tsx scripts/format-teams.ts",
     "add-teams": "tsx scripts/add-teams.ts",
-    "copy-db": "tsx scripts/copy-db.ts"
+    "copy-db": "tsx scripts/copy-db.ts",
+    "initialize-tournament-multi": "ts-node scripts/initialize-tournament-multi.ts",
+    "start-round-multi": "ts-node scripts/start-round-multi.ts",
+    "advance-round-multi": "ts-node scripts/advance-round-multi.ts",
+    "status-tournament": "ts-node scripts/status-tournament.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -35,11 +32,11 @@
     "bottleneck": "^2.19.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.3.1",
     "framer-motion": "^12.23.26",
     "lucide-react": "^0.562.0",
     "mongodb": "^7.0.0",
-    "mongoose": "^9.0.2",
+    "mongoose": "^9.3.3",
     "next": "^16.1.1-canary.6",
     "next-auth": "^4.24.13",
     "react": "19.2.3",
@@ -47,11 +44,12 @@
     "react-hook-form": "^7.69.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "ts-node": "^10.9.2",
     "zod": "^4.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/node": "^20.19.27",
+    "@types/node": "^20.19.37",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
@@ -59,6 +57,6 @@
     "tailwindcss": "^4.0.0",
     "tsx": "^4.21.0",
     "tw-animate-css": "^1.4.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.3"
   }
 }

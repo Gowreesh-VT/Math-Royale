@@ -1,12 +1,14 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 /**
- * Tracks each stage of Round 2 Tug of War
+ * Round2Stage - Updated for Multi-Round Format (A, B, C)
+ * Tracks each round with multiple matches
  */
 export interface IRound2Round extends Document {
-  roundNumber: number;
-  roundName: string; // 'Quarterfinals' | 'Semifinals' | 'Finals'
+  roundStage: 'A' | 'B' | 'C'; // REPLACES roundNumber
+  roundName: string; // 'Round A (Easy)' | 'Round B (Medium)' | 'Round C (Hard)'
   matchIds: Types.ObjectId[];
+  totalTeams: number; // Teams participating in this round
   status: 'pending' | 'active' | 'completed';
   duration: number;
   startTime?: Date;
@@ -17,21 +19,26 @@ export interface IRound2Round extends Document {
 
 const Round2RoundSchema = new Schema<IRound2Round>(
   {
-    roundNumber: {
-      type: Number,
+    roundStage: {
+      type: String,
       required: true,
-      enum: [1, 2, 3],
+      enum: ['A', 'B', 'C'],
       unique: true,
     },
     roundName: {
       type: String,
       required: true,
-      enum: ['Quarterfinals', 'Semifinals', 'Finals'],
+      enum: ['Round A (Easy)', 'Round B (Medium)', 'Round C (Hard)'],
     },
     matchIds: [{
       type: Schema.Types.ObjectId,
       ref: 'Match',
     }],
+    totalTeams: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
     status: {
       type: String,
       required: true,
@@ -41,7 +48,7 @@ const Round2RoundSchema = new Schema<IRound2Round>(
     duration: {
       type: Number,
       required: true,
-      default: 2700,
+      default: 1800, // 30 mins
     },
     startTime: {
       type: Date,

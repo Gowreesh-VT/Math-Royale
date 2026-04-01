@@ -66,16 +66,16 @@ const ROUND_3_QUESTIONS = {
 
 async function seedRound2Questions() {
   try {
-    console.log('🔗 Connecting to MongoDB...');
+    console.log('Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB\n');
+    console.log('Connected to MongoDB\n');
 
-    console.log('🗑️  Clearing existing tournament questions...');
+    console.log('Clearing existing tournament questions...');
     await Round2Question.deleteMany({});
     console.log('   ✓ Cleared\n');
 
     async function seedRoundQuestions(roundNumber: number, roundName: string, questions: { sideA: any[], sideB: any[] }) {
-      console.log(`📝 Seeding Round ${roundNumber} (${roundName}) questions...`);
+      console.log(`Seeding Round ${roundNumber} (${roundName}) questions...`);
       
       for (const q of questions.sideA) {
         await Round2Question.create({
@@ -111,7 +111,7 @@ async function seedRound2Questions() {
     const totalR3 = ROUND_3_QUESTIONS.sideA.length + ROUND_3_QUESTIONS.sideB.length;
     
     console.log('═══════════════════════════════════════════════');
-    console.log('✅ Tournament Questions Seeded Successfully!');
+    console.log('Tournament Questions Seeded Successfully!');
     console.log('═══════════════════════════════════════════════');
     console.log(`Round 1 (Quarterfinals): ${totalR1} questions (${ROUND_1_QUESTIONS.sideA.length} Side A, ${ROUND_1_QUESTIONS.sideB.length} Side B)`);
     console.log(`Round 2 (Semifinals):    ${totalR2} questions (${ROUND_2_QUESTIONS.sideA.length} Side A, ${ROUND_2_QUESTIONS.sideB.length} Side B)`);
@@ -124,7 +124,7 @@ async function seedRound2Questions() {
     process.exit(0);
 
   } catch (error) {
-    console.error('❌ Seeding failed:', error);
+    console.error('Seeding failed:', error);
     await mongoose.disconnect();
     process.exit(1);
   }

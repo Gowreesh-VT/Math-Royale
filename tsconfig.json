@@ -22,6 +22,14 @@
       "@/*": ["./src/*"]
     }
   },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node"
+    },
+    "transpileOnly": true,
+    "skipProject": true
+  },
   "include": [
     "next-env.d.ts",
     "**/*.ts",

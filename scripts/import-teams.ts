@@ -38,13 +38,13 @@ function parseJSON(content: string): TeamData[] {
 
 async function importTeams(filePath: string) {
   try {
-    console.log('🔌 Connecting to MongoDB...');
+    console.log('Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI!);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     // Read file
     if (!fs.existsSync(filePath)) {
-      console.error(`❌ File not found: ${filePath}`);
+      console.error(`File not found: ${filePath}`);
       process.exit(1);
     }
 
@@ -54,13 +54,13 @@ async function importTeams(filePath: string) {
     let teams: TeamData[];
     
     if (fileExt === 'csv') {
-      console.log('📄 Parsing CSV file...');
+      console.log('Parsing CSV file...');
       teams = parseCSV(fileContent);
     } else if (fileExt === 'json') {
       console.log('📄 Parsing JSON file...');
       teams = parseJSON(fileContent);
     } else {
-      console.error('❌ Unsupported file format. Use .csv or .json');
+      console.error('Unsupported file format. Use .csv or .json');
       process.exit(1);
     }
 
@@ -104,10 +104,10 @@ async function importTeams(filePath: string) {
           hasRound2Access: false,
         });
 
-        console.log(`✅ [${i + 1}/${teams.length}] Added: ${teamData.teamName} (${teamData.email})`);
+        console.log(`[${i + 1}/${teams.length}] Added: ${teamData.teamName} (${teamData.email})`);
         successCount++;
       } catch (error: any) {
-        console.error(`❌ [${i + 1}/${teams.length}] Error adding ${teamData.teamName}:`, error.message);
+        console.error(`[${i + 1}/${teams.length}] Error adding ${teamData.teamName}:`, error.message);
         errorCount++;
       }
     }
@@ -116,17 +116,17 @@ async function importTeams(filePath: string) {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📊 IMPORT SUMMARY');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`✅ Successfully added: ${successCount}`);
+    console.log(`Successfully added: ${successCount}`);
     console.log(`⏭️  Skipped (duplicates): ${skipCount}`);
-    console.log(`❌ Errors: ${errorCount}`);
+    console.log(`Errors: ${errorCount}`);
     console.log(`📝 Total processed: ${teams.length}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
 
     await mongoose.disconnect();
-    console.log('👋 Disconnected from MongoDB');
+    console.log('Disconnected from MongoDB');
   } catch (error) {
-    console.error('❌ Error importing teams:', error);
+    console.error('Error importing teams:', error);
     process.exit(1);
   }
 }
@@ -134,7 +134,7 @@ async function importTeams(filePath: string) {
 const filePath = process.argv[2];
 
 if (!filePath) {
-  console.error('❌ Please provide a file path');
+  console.error('Please provide a file path');
   console.log('Usage: npm run import-teams <file.csv|file.json>');
   process.exit(1);
 }
