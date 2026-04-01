@@ -63,7 +63,6 @@ const Round2RoundSchema = new Schema<IRound2Round>(
 );
 
 Round2RoundSchema.index({ status: 1 });
-Round2RoundSchema.index({ roundStage: 1 });
 
 const Round2Stage: Model<IRound2Round> =
   mongoose.models.Round2Stage ||
