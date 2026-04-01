@@ -22,7 +22,7 @@ async function getStatusTournament() {
   try {
     const mongoUri = process.env.MONGODB_URI;
     if (!mongoUri) {
-      console.error('❌ MONGODB_URI not found');
+      console.error('MONGODB_URI not found');
       process.exit(1);
     }
 
@@ -34,7 +34,7 @@ async function getStatusTournament() {
     const rounds = await Round2Stage.find({}).sort({ roundStage: 1 }).lean();
     
     if (rounds.length === 0) {
-      console.log('❌ Tournament not initialized');
+      console.log('Tournament not initialized');
       process.exit(1);
     }
 
@@ -75,9 +75,14 @@ async function getStatusTournament() {
         if (match.status === 'active') active++;
         if (match.status === 'waiting') waiting++;
 
+        const teamsA = await Team.find({ _id: { $in: match.sideA_teamIds } }).lean();
+        const teamsB = await Team.find({ _id: { $in: match.sideB_teamIds } }).lean();
+        const namesA = teamsA.map((t: any) => t.teamName).join(', ') || 'None';
+        const namesB = teamsB.map((t: any) => t.teamName).join(', ') || 'None';
+
         console.log(`\n   Match ${match.matchNumber}:`);
-        console.log(`      Side A (${match.sideA_teamIds.length}): ${match.scoreA} points`);
-        console.log(`      Side B (${match.sideB_teamIds.length}): ${match.scoreB} points`);
+        console.log(`      Side A [${namesA}]: ${match.scoreA} points`);
+        console.log(`      Side B [${namesB}]: ${match.scoreB} points`);
         console.log(`      Status: ${match.status}${match.winningSide ? ` - Side ${match.winningSide} WON` : ''}`);
       }
 
@@ -99,7 +104,7 @@ async function getStatusTournament() {
     process.exit(0);
     
   } catch (error: any) {
-    console.error('\n❌ Error:', error.message);
+    console.error('\nError:', error.message);
     console.error(error.stack);
     process.exit(1);
   }

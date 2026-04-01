@@ -31,39 +31,39 @@ async function initializeTournamentMulti() {
   try {
     let mongoUri = process.env.MONGODB_URI;
     if (!mongoUri) {
-      console.error('❌ MONGODB_URI not found in environment variables');
+      console.error('MONGODB_URI not found in environment variables');
       process.exit(1);
     }
 
     console.log('🔌 Connecting to MongoDB...');
     await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB\n');
+    console.log('Connected to MongoDB\n');
 
     console.log('📋 Fetching all teams with hasRound2Access = true...');
     const allTeams = await Team.find({ hasRound2Access: true }).lean();
     
     if (allTeams.length < 4) {
-      console.error(`❌ Need at least 4 teams, found ${allTeams.length}`);
+      console.error(`Need at least 4 teams, found ${allTeams.length}`);
       process.exit(1);
     }
     
-    console.log(`✅ Found ${allTeams.length} teams for Round A\n`);
+    console.log(`Found ${allTeams.length} teams for Round A\n`);
     allTeams.forEach((team, idx) => {
       console.log(`   ${idx + 1}. ${team.teamName} (${team.codeforcesHandle})`);
     });
     console.log('');
 
-    console.log('🔍 Checking if tournament already exists...');
+    console.log('Checking if tournament already exists...');
     const existingRoundA = await Round2Stage.findOne({ roundStage: 'A' });
     if (existingRoundA) {
-      console.error('❌ Tournament already initialized.');
+      console.error('Tournament already initialized.');
       console.error('   Delete Round A, B, C from database first.');
       process.exit(1);
     }
-    console.log('✅ No existing tournament found\n');
+    console.log('No existing tournament found\n');
 
     // Fetch questions for Round A
-    console.log('📚 Fetching questions for Round A...');
+    console.log('Fetching questions for Round A...');
     const questionsA_all = await Round2Question.find({ 
       roundNumber: 1, 
       side: 'A' 
@@ -74,21 +74,21 @@ async function initializeTournamentMulti() {
     }).lean();
     
     if (questionsA_all.length < 4 || questionsB_all.length < 4) {
-      console.error(`❌ Need at least 4 questions per side.`);
+      console.error(`Need at least 4 questions per side.`);
       console.error(`   Found ${questionsA_all.length} for Side A, ${questionsB_all.length} for Side B.`);
       console.error('   Run: npm run seed-round2');
       process.exit(1);
     }
     
-    console.log(`✅ Found ${questionsA_all.length} questions for Side A`);
-    console.log(`✅ Found ${questionsB_all.length} questions for Side B\n`);
+    console.log(`Found ${questionsA_all.length} questions for Side A`);
+    console.log(`Found ${questionsB_all.length} questions for Side B\n`);
 
     // Create matches for Round A
-    const numMatches = Math.floor(allTeams.length / 8);
-    const remainingTeams = allTeams.length % 8;
+    const numMatches = Math.floor(allTeams.length / 2);
+    const remainingTeams = allTeams.length % 2;
     
-    console.log(`🎲 Creating Round A matches...`);
-    console.log(`   ${numMatches} full match(es) with 8 teams each`);
+    console.log(`Creating Round A matches...`);
+    console.log(`   ${numMatches} full match(es) with 2 teams each`);
     if (remainingTeams > 0) {
       console.log(`   1 match with ${remainingTeams} team(s)\n`);
     }
@@ -100,14 +100,14 @@ async function initializeTournamentMulti() {
     const matchIds: any[] = [];
     let matchNumber = 1;
 
-    // Create matches in groups of 8
-    for (let i = 0; i < shuffled.length; i += 8) {
-      const teamIndices = shuffled.slice(i, Math.min(i + 8, shuffled.length));
+    // Create matches in groups of 2 (1v1)
+    for (let i = 0; i < shuffled.length; i += 2) {
+      const teamIndices = shuffled.slice(i, Math.min(i + 2, shuffled.length));
       const matchTeams = teamIndices.map(idx => allTeams[idx]);
 
-      // Skip if less than 4 teams
-      if (matchTeams.length < 4) {
-        console.log(`   ⚠️  Skipping group with only ${matchTeams.length} teams`);
+      // Skip if less than 2 teams
+      if (matchTeams.length < 2) {
+        console.log(`Skipping group with only ${matchTeams.length} teams`);
         continue;
       }
 
@@ -134,7 +134,7 @@ async function initializeTournamentMulti() {
         duration: 1800, // 30 mins + 10 buffer
       }).save();
 
-      console.log(`✅ Match ${matchNumber} created (${sideA_teams.length}v${sideB_teams.length})`);
+      console.log(`Match ${matchNumber} created (${sideA_teams.length}v${sideB_teams.length})`);
       console.log(`   Side A: ${sideA_teams.map(t => t.teamName).join(', ')}`);
       console.log(`   Side B: ${sideB_teams.map(t => t.teamName).join(', ')}\n`);
       
@@ -143,7 +143,7 @@ async function initializeTournamentMulti() {
     }
 
     // Create Round2Stage records for A, B, C
-    console.log('📝 Creating Round2Stage records for all rounds...\n');
+    console.log('Creating Round2Stage records for all rounds...\n');
     
     const roundA = await Round2Stage.create({
       roundStage: 'A',
@@ -172,9 +172,9 @@ async function initializeTournamentMulti() {
       duration: 2400,
     });
 
-    console.log(`✅ Round A: ${matchIds.length} match(es) created`);
-    console.log(`✅ Round B: Created (empty, will populate after Round A)`);
-    console.log(`✅ Round C: Created (empty, will populate after Round B)\n`);
+    console.log(`Round A: ${matchIds.length} match(es) created`);
+    console.log(`Round B: Created (empty, will populate after Round A)`);
+    console.log(`Round C: Created (empty, will populate after Round B)\n`);
 
     console.log('🎉 Tournament initialized successfully!\n');
     console.log('Next steps:');
@@ -187,7 +187,7 @@ async function initializeTournamentMulti() {
 
     process.exit(0);
   } catch (error: any) {
-    console.error('❌ Error initializing tournament:', error.message);
+    console.error('Error initializing tournament:', error.message);
     console.error(error);
     process.exit(1);
   }

@@ -26,33 +26,33 @@ async function startRoundMulti(roundStage: RoundStage) {
   try {
     const mongoUri = process.env.MONGODB_URI;
     if (!mongoUri) {
-      console.error('❌ MONGODB_URI not found');
+      console.error('MONGODB_URI not found');
       process.exit(1);
     }
 
     await mongoose.connect(mongoUri);
     
-    console.log(`\n▶️  Starting Round ${roundStage}...\n`);
+    console.log(`\nStarting Round ${roundStage}...\n`);
 
     const round = await Round2Stage.findOne({ roundStage });
     
     if (!round) {
-      console.error(`❌ Round ${roundStage} not found`);
+      console.error(`Round ${roundStage} not found`);
       process.exit(1);
     }
 
     if (round.status === 'active') {
-      console.error(`❌ Round ${roundStage} is already active`);
+      console.error(`Round ${roundStage} is already active`);
       process.exit(1);
     }
 
     if (round.status === 'completed') {
-      console.error(`❌ Round ${roundStage} is already completed`);
+      console.error(`Round ${roundStage} is already completed`);
       process.exit(1);
     }
 
     if (round.matchIds.length === 0) {
-      console.error(`❌ Round ${roundStage} has no matches`);
+      console.error(`Round ${roundStage} has no matches`);
       process.exit(1);
     }
 
@@ -77,20 +77,20 @@ async function startRoundMulti(roundStage: RoundStage) {
 
     const matches = await Match.find({ _id: { $in: round.matchIds } });
 
-    console.log(`✅ Round ${roundStage} ACTIVATED!`);
+    console.log(`   Round ${roundStage} ACTIVATED!`);
     console.log(`   Round Name: ${round.roundName}`);
     console.log(`   Total matches: ${matches.length}`);
     console.log(`   Teams: ${round.totalTeams}`);
     console.log(`   Duration: ${round.duration} seconds (${Math.round(round.duration / 60)} minutes)`);
     console.log(`   Start time: ${startTime.toLocaleString()}`);
     console.log(`   End time: ${endTime.toLocaleString()}`);
-    console.log(`\n🎯 Teams can now access Round ${roundStage} matches at /round2\n`);
+    console.log(`\n Teams can now access Round ${roundStage} matches at /round2\n`);
 
     await mongoose.connection.close();
     process.exit(0);
     
   } catch (error: any) {
-    console.error('\n❌ Error:', error.message);
+    console.error('\nError:', error.message);
     console.error(error.stack);
     process.exit(1);
   }
@@ -99,7 +99,7 @@ async function startRoundMulti(roundStage: RoundStage) {
 const roundStage = process.argv[2] as RoundStage;
 
 if (!['A', 'B', 'C'].includes(roundStage)) {
-  console.error('\n❌ Invalid usage');
+  console.error('\nInvalid usage');
   console.error('\nUsage:');
   console.error('  npm run start-round-multi A   # Start Round A (Easy)');
   console.error('  npm run start-round-multi B   # Start Round B (Medium)');

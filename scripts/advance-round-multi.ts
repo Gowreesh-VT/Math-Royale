@@ -33,7 +33,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
   try {
     const mongoUri = process.env.MONGODB_URI;
     if (!mongoUri) {
-      console.error('❌ MONGODB_URI not found');
+      console.error('MONGODB_URI not found');
       process.exit(1);
     }
 
@@ -57,7 +57,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
 
     const currentRound = await Round2Stage.findOne({ roundStage: fromRound });
     if (!currentRound) {
-      console.error(`❌ Round ${fromRound} not found`);
+      console.error(`Round ${fromRound} not found`);
       process.exit(1);
     }
     
@@ -66,7 +66,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
        const allCompleted = matches.every(m => m.status === 'completed');
        
        if (!allCompleted) {
-         console.error(`❌ Round ${fromRound} has incomplete matches. Finish them first.`);
+         console.error(`Round ${fromRound} has incomplete matches. Finish them first.`);
          process.exit(1);
        }
        console.log(`📝 Auto-completing Round ${fromRound} since all matches finished...`);
@@ -76,7 +76,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     
     const matches = await Match.find({ _id: { $in: currentRound.matchIds } });
     if (matches.length === 0) {
-      console.error(`❌ No matches found for Round ${fromRound}`);
+      console.error(`No matches found for Round ${fromRound}`);
       process.exit(1);
     }
     
@@ -101,7 +101,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     const totalTeams = sortedTeams.length;
     
     if (totalTeams === 0) {
-      console.error('❌ No teams found participating in this round.');
+      console.error('No teams found participating in this round.');
       process.exit(1);
     }
     
@@ -126,18 +126,18 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     const questionsB_all = await Round2Question.find({ roundNumber: nextRoundNumber, side: 'B' }).lean();
     
     if (questionsA_all.length < 4 || questionsB_all.length < 4) {
-      console.error(`❌ Need at least 4 questions per side for Next Round (Phase ${nextRoundNumber}).`);
+      console.error(`Need at least 4 questions per side for Next Round (Phase ${nextRoundNumber}).`);
       process.exit(1);
     }
     
     const nextRoundObj = await Round2Stage.findOne({ roundStage: nextRound });
     if (!nextRoundObj) {
-      console.error(`❌ Round ${nextRound} Stage not found in database.`);
+      console.error(`Round ${nextRound} Stage not found in database.`);
       process.exit(1);
     }
     
     if (nextRoundObj.status !== 'pending') {
-      console.error(`❌ Round ${nextRound} is already ${nextRoundObj.status}.`);
+      console.error(`Round ${nextRound} is already ${nextRoundObj.status}.`);
       process.exit(1);
     }
     
@@ -183,7 +183,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
       
       newMatchIds.push(match._id as mongoose.Types.ObjectId);
       
-      console.log(`✅ Match ${matchNumber} created (${sideA_teams.length}v${sideB_teams.length})`);
+      console.log(`Match ${matchNumber} created (${sideA_teams.length}v${sideB_teams.length})`);
       matchNumber++;
     }
     
@@ -194,12 +194,12 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     nextRoundObj.endTime = endTime;
     await nextRoundObj.save();
     
-    console.log(`\n🎉 Round ${nextRound} is now ACTIVE! Teams can start solving.`);
+    console.log(`\nRound ${nextRound} is now ACTIVE! Teams can start solving.`);
     
     process.exit(0);
 
   } catch (error: any) {
-    console.error('❌ Error:', error.message);
+    console.error('Error:', error.message);
     process.exit(1);
   }
 }
@@ -207,7 +207,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
 const fromRound = process.argv[2] as 'A' | 'B';
 
 if (!['A', 'B'].includes(fromRound)) {
-  console.error('\n❌ Invalid usage');
+  console.error('\nInvalid usage');
   console.error('\nUsage:');
   console.error('  npm run advance-round-multi A   # Round A → Round B (eliminate 40%)');
   console.error('  npm run advance-round-multi B   # Round B → Round C (eliminate 60%)\n');

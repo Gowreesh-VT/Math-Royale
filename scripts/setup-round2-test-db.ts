@@ -12,10 +12,10 @@ dotenv.config({ path: '.env.local' });
 const MONGODB_URI = process.env.MONGODB_URI;
 const DEFAULT_USER_EMAIL = 'manmaychakarborty@gmail.com';
 const DEV_OPPONENT_EMAIL = 'round2-dev-opponent@example.com';
-const ROUND_NAMES: Record<number, 'Quarterfinals' | 'Semifinals' | 'Finals'> = {
-  1: 'Quarterfinals',
-  2: 'Semifinals',
-  3: 'Finals',
+const ROUND_NAMES: Record<string, string> = {
+  'A': 'Round A (Easy)',
+  'B': 'Round B (Medium)',
+  'C': 'Round C (Hard)',
 };
 
 const ROUND_QUESTIONS = {
@@ -93,15 +93,19 @@ async function setupRound2TestData() {
   }
 
   const userEmail = process.argv[2] || DEFAULT_USER_EMAIL;
-  const requestedRound = Number(process.argv[3] || 1);
-
-  if (![1, 2, 3].includes(requestedRound)) {
-    throw new Error('Round must be 1, 2, or 3');
+  const requestedRoundStr = process.argv[3] || 'A';
+  
+  if (!['A', 'B', 'C'].includes(requestedRoundStr)) {
+    throw new Error('Round must be A, B, or C');
   }
 
-  console.log('🔌 Connecting to MongoDB...');
+  const STAGES = ['A', 'B', 'C'];
+  const stageIndex = STAGES.indexOf(requestedRoundStr);
+  const requestedRoundNumeric = stageIndex + 1; 
+
+  console.log('Connecting to MongoDB...');
   await mongoose.connect(MONGODB_URI);
-  console.log('✅ Connected to MongoDB');
+  console.log('Connected to MongoDB');
 
   console.log('🧹 Resetting Round 2 collections...');
   await Promise.all([
@@ -110,9 +114,9 @@ async function setupRound2TestData() {
     Round2Stage.deleteMany({}),
   ]);
   await seedRound2Questions();
-  console.log('✅ Round 2 collections reset and questions seeded');
+  console.log('Round 2 collections reset and questions seeded');
 
-  console.log(`👤 Preparing player team for ${userEmail}...`);
+  console.log(`Preparing player team for ${userEmail}...`);
   const playerTeam = await Team.findOneAndUpdate(
     { email: userEmail },
     {
@@ -131,7 +135,7 @@ async function setupRound2TestData() {
     }
   );
 
-  console.log('🤖 Preparing opponent team...');
+  console.log('Preparing opponent team...');
   const opponentTeam = await Team.findOneAndUpdate(
     { email: DEV_OPPONENT_EMAIL },
     {
@@ -150,24 +154,26 @@ async function setupRound2TestData() {
     }
   );
 
-  const questionPoolA = await Round2Question.find({ roundNumber: requestedRound, side: 'A' }).sort({ createdAt: 1 }).limit(4);
-  const questionPoolB = await Round2Question.find({ roundNumber: requestedRound, side: 'B' }).sort({ createdAt: 1 }).limit(4);
+  const questionPoolA = await Round2Question.find({ roundNumber: requestedRoundNumeric, side: 'A' }).sort({ createdAt: 1 }).limit(4);
+  const questionPoolB = await Round2Question.find({ roundNumber: requestedRoundNumeric, side: 'B' }).sort({ createdAt: 1 }).limit(4);
 
   if (questionPoolA.length < 4 || questionPoolB.length < 4) {
     throw new Error('Failed to seed enough Round 2 questions for the test match');
   }
 
-  const previousRoundNumber = requestedRound - 1;
   const duration = 2 * 60 * 60;
   const startTime = new Date(Date.now() - 60 * 1000);
   const endTime = new Date(startTime.getTime() + duration * 1000);
 
-  if (previousRoundNumber >= 1) {
-    const previousQuestionsA = await Round2Question.find({ roundNumber: previousRoundNumber, side: 'A' }).sort({ createdAt: 1 }).limit(4);
-    const previousQuestionsB = await Round2Question.find({ roundNumber: previousRoundNumber, side: 'B' }).sort({ createdAt: 1 }).limit(4);
+  if (stageIndex > 0) {
+    const previousRoundNumeric = stageIndex;
+    const previousRoundStage = STAGES[stageIndex - 1];
+    
+    const previousQuestionsA = await Round2Question.find({ roundNumber: previousRoundNumeric, side: 'A' }).sort({ createdAt: 1 }).limit(4);
+    const previousQuestionsB = await Round2Question.find({ roundNumber: previousRoundNumeric, side: 'B' }).sort({ createdAt: 1 }).limit(4);
 
     const completedMatch = await Match.create({
-      roundNumber: previousRoundNumber,
+      roundStage: previousRoundStage,
       sideA_teamIds: [playerTeam._id],
       sideA_handles: playerTeam.codeforcesHandle ? [playerTeam.codeforcesHandle] : [],
       sideB_teamIds: [opponentTeam._id],
@@ -184,8 +190,8 @@ async function setupRound2TestData() {
     });
 
     await Round2Stage.create({
-      roundNumber: previousRoundNumber,
-      roundName: ROUND_NAMES[previousRoundNumber],
+      roundStage: previousRoundStage,
+      roundName: ROUND_NAMES[previousRoundStage],
       matchIds: [completedMatch._id],
       status: 'completed',
       duration,
@@ -194,9 +200,9 @@ async function setupRound2TestData() {
     });
   }
 
-  console.log(`🏆 Creating active ${ROUND_NAMES[requestedRound]} dev match...`);
+  console.log(`Creating active ${ROUND_NAMES[requestedRoundStr]} dev match...`);
   const match = await Match.create({
-    roundNumber: requestedRound,
+    roundStage: requestedRoundStr,
     sideA_teamIds: [playerTeam._id],
     sideA_handles: playerTeam.codeforcesHandle ? [playerTeam.codeforcesHandle] : [],
     sideB_teamIds: [opponentTeam._id],
@@ -211,8 +217,8 @@ async function setupRound2TestData() {
   });
 
   const stage = await Round2Stage.create({
-    roundNumber: requestedRound,
-    roundName: ROUND_NAMES[requestedRound],
+    roundStage: requestedRoundStr,
+    roundName: ROUND_NAMES[requestedRoundStr],
     matchIds: [match._id],
     status: 'active',
     duration,
@@ -222,11 +228,11 @@ async function setupRound2TestData() {
 
   console.log('');
   console.log('═══════════════════════════════════════════════');
-  console.log('✅ Round 2 test data is ready');
+  console.log('Round 2 test data is ready');
   console.log('═══════════════════════════════════════════════');
   console.log(`Player team:   ${playerTeam.teamName} (${playerTeam.email})`);
   console.log(`Round 2 access:${playerTeam.hasRound2Access ? ' enabled' : ' disabled'}`);
-  console.log(`Round:         ${ROUND_NAMES[requestedRound]}`);
+  console.log(`Round:         ${ROUND_NAMES[requestedRoundStr]}`);
   console.log(`Match ID:      ${match._id}`);
   console.log(`Stage ID:      ${stage._id}`);
   console.log(`Match status:  ${match.status}`);
@@ -247,7 +253,7 @@ async function setupRound2TestData() {
 
 setupRound2TestData()
   .catch((error) => {
-    console.error('❌ Failed to set up Round 2 test data:', error);
+    console.error('Failed to set up Round 2 test data:', error);
     process.exitCode = 1;
   })
   .finally(async () => {
