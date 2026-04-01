@@ -2,16 +2,17 @@
  * Initialize Tournament Script
  * 
  * Prerequisites:
- * - Manually set hasRound2Access = true for exactly 8 teams in MongoDB
+ * - Manually set hasRound2Access = true for 4 teams (test mode) or 8 teams
  * - Run seed-round2 script to seed questions
  * 
  * Usage:
  *   npm run initialize-tournament
  * 
  * What it does:
- * - Fetches 8 teams with hasRound2Access = true
- * - Randomly shuffles teams into Side A (4 teams) and Side B (4 teams)
- * - Creates Quarterfinals match with question pools
+ * - Fetches teams with hasRound2Access = true
+ * - Supports 4 teams (2v2 test mode) or 8 teams (4v4 standard mode)
+ * - Randomly shuffles teams into Side A and Side B
+ * - Creates Round 1 match with question pools
  * - Creates Round2Stage record
  */
 
@@ -40,14 +41,17 @@ async function initializeTournament() {
 
     console.log('📋 Fetching teams with hasRound2Access = true...');
     const teams = await Team.find({ hasRound2Access: true }).lean();
-    
-    if (teams.length !== 8) {
-      console.error(`❌ Expected 8 teams with hasRound2Access=true, found ${teams.length}`);
-      console.error('   Set hasRound2Access = true for exactly 8 teams in MongoDB first.');
+
+    const isTestMode = teams.length === 4;
+    const isStandardMode = teams.length === 8;
+
+    if (!isTestMode && !isStandardMode) {
+      console.error(`❌ Expected 4 (test) or 8 (standard) teams with hasRound2Access=true, found ${teams.length}`);
+      console.error('   Set hasRound2Access = true for exactly 4 or 8 teams in MongoDB first.');
       process.exit(1);
     }
-    
-    console.log(`✅ Found ${teams.length} teams:`);
+
+    console.log(`✅ Found ${teams.length} teams (${isTestMode ? 'TEST MODE 2v2' : 'STANDARD MODE 4v4'}):`);
     teams.forEach((team, idx) => {
       console.log(`   ${idx + 1}. ${team.teamName} (${team.codeforcesHandle})`);
     });
@@ -104,7 +108,7 @@ async function initializeTournament() {
     });
     console.log('');
 
-    console.log('🏆 Creating Quarterfinals match (4v4)...');
+    console.log(`🏆 Creating Round 1 match (${isTestMode ? '2v2' : '4v4'})...`);
     const match = await new Match({
       roundNumber: 1,
       sideA_teamIds: sideA_teams.map(t => t._id),
