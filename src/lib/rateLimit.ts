@@ -30,7 +30,7 @@ export async function checkRateLimit(
       $inc: { count: 1 } // Atomic increment
     },
     {
-      new: true // Return the updated document
+      returnDocument: 'after' // Return the updated document
     }
   );
 
@@ -59,7 +59,7 @@ export async function checkRateLimit(
     },
     {
       upsert: true,
-      new: true
+      returnDocument: 'after'
     }
   );
 

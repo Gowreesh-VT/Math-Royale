@@ -102,16 +102,22 @@ async function advanceRound(fromRound: 1 | 2) {
     if (fromRound === 1) {
 
       roundName = 'Semifinals';
-      if (winningTeamIds.length < 4) {
-        console.error(`❌ Need 4 winning teams for Semifinals, found ${winningTeamIds.length}`);
+      if (winningTeamIds.length < 2) {
+        console.error(`❌ Need at least 2 winning teams for Semifinals, found ${winningTeamIds.length}`);
         process.exit(1);
       }
 
       const shuffled = [...Array(winningTeamIds.length).keys()]
         .sort(() => Math.random() - 0.5);
       
-      const sideA_indices = shuffled.slice(0, 2);
-      const sideB_indices = shuffled.slice(2, 4);
+      let sideA_indices, sideB_indices;
+      if (winningTeamIds.length === 2) {
+        sideA_indices = [shuffled[0]];
+        sideB_indices = [shuffled[1]];
+      } else {
+        sideA_indices = shuffled.slice(0, 2);
+        sideB_indices = shuffled.slice(2, 4);
+      }
       
       const sideA_teamIds = sideA_indices.map(i => winningTeamIds[i]);
       const sideB_teamIds = sideB_indices.map(i => winningTeamIds[i]);
