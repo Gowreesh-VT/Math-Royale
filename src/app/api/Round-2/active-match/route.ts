@@ -39,7 +39,7 @@ export async function GET() {
         { sideA_teamIds: teamId },
         { sideB_teamIds: teamId },
       ],
-    }).sort({ roundNumber: -1 });
+    }).sort({ roundStage: -1 });
 
     if (!match) {
       return NextResponse.json({
@@ -55,22 +55,21 @@ export async function GET() {
         success: true,
         message: 'waiting',
         matchId: match._id.toString(),
-        roundNumber: match.roundNumber,
+        roundStage: match.roundStage,
         status: 'waiting',
       });
     }
 
     if (match.status === 'completed') {
-      const nextRound = match.roundNumber + 1;
-
+      const nextRound = match.roundStage === 'A' ? 'B' : match.roundStage === 'B' ? 'C' : null;
 
       const isInSideA = match.sideA_teamIds.some((id: any) => id.toString() === teamId);
       const teamSide = isInSideA ? 'A' : 'B';
 
-      if (match.winningSide === teamSide && nextRound <= 3) {
+      if (match.winningSide === teamSide && nextRound) {
 
         const nextMatch = await Match.findOne({
-          roundNumber: nextRound,
+          roundStage: nextRound,
           $or: [
             { sideA_teamIds: teamId },
             { sideB_teamIds: teamId },
@@ -81,7 +80,7 @@ export async function GET() {
           return NextResponse.json({
             success: true,
             matchId: nextMatch._id.toString(),
-            roundNumber: nextMatch.roundNumber,
+            roundStage: nextMatch.roundStage,
             status: nextMatch.status,
           });
         }
@@ -91,7 +90,7 @@ export async function GET() {
         success: false,
         message: 'completed',
         matchId: match._id.toString(),
-        roundNumber: match.roundNumber,
+        roundStage: match.roundStage,
         winningSide: match.winningSide,
         teamAdvanced: match.winningSide === teamSide,
       });
@@ -100,7 +99,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       matchId: match._id.toString(),
-      roundNumber: match.roundNumber,
+      roundStage: match.roundStage,
       status: match.status,
     });
 

@@ -20,7 +20,7 @@ interface CFSubmission {
 }
 
 export const STEAL_POWER_UP = {
-  roundNumber: 2,
+  roundStage: 'B',
   key: 'semifinals-steal',
   title: 'Steal Option',
   contestId: '1771',
@@ -31,7 +31,7 @@ export const STEAL_POWER_UP = {
 };
 
 export const DOUBLE_OR_NOTHING_POWER_UP = {
-  roundNumber: 3,
+  roundStage: 'C',
   key: 'finals-double-or-nothing',
   title: 'Double or Nothing',
   contestId: '2171',
@@ -45,8 +45,8 @@ const POWER_UPS = [STEAL_POWER_UP, DOUBLE_OR_NOTHING_POWER_UP] as const;
 
 type PowerUpConfig = (typeof POWER_UPS)[number];
 
-function getPowerUpForRound(roundNumber: number): PowerUpConfig | null {
-  return POWER_UPS.find((powerUp) => powerUp.roundNumber === roundNumber) || null;
+function getPowerUpForRound(roundStage: string): PowerUpConfig | null {
+  return POWER_UPS.find((powerUp) => powerUp.roundStage === roundStage) || null;
 }
 
 function isPowerUpSubmission(submission: CFSubmission, powerUp: PowerUpConfig) {
@@ -72,7 +72,7 @@ export async function processStealPowerUpSubmissions(
     return null;
   }
 
-  const powerUp = getPowerUpForRound(match.roundNumber);
+  const powerUp = getPowerUpForRound(match.roundStage);
 
   if (!powerUp) {
     return null;
@@ -192,7 +192,7 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
     return null;
   }
 
-  const powerUp = getPowerUpForRound(match.roundNumber);
+  const powerUp = getPowerUpForRound(match.roundStage);
 
   if (!powerUp) {
     return null;
