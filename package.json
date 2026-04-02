@@ -22,7 +22,8 @@
     "initialize-tournament-multi": "ts-node scripts/initialize-tournament-multi.ts",
     "start-round-multi": "ts-node scripts/start-round-multi.ts",
     "advance-round-multi": "ts-node scripts/advance-round-multi.ts",
-    "status-tournament": "ts-node scripts/status-tournament.ts"
+    "status-tournament": "ts-node scripts/status-tournament.ts",
+    "fix-match-handles": "ts-node scripts/fix-match-handles.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

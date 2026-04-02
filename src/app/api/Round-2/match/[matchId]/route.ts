@@ -92,6 +92,12 @@ export async function GET(
       ? await getStealPowerUpState(match._id, teamId)
       : null;
 
+    const roundNumbers: Record<string, number> = {
+      'A': 1,
+      'B': 2,
+      'C': 3,
+    };
+
     const roundNames: Record<string, string> = {
       'A': 'Quarterfinals',
       'B': 'Semifinals',
@@ -103,6 +109,7 @@ export async function GET(
       match: {
         matchId: match._id,
         roundStage: match.roundStage,
+        roundNumber: roundNumbers[match.roundStage] || 0,
         roundName: roundNames[match.roundStage] || 'Unknown',
         teamSide,
 
