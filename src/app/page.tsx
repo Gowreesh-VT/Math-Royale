@@ -14,8 +14,8 @@ export default function Home() {
       <Organizers />
       
       <footer className="py-8 text-center border-t border-white/10">
-        <p className="font-ui text-xs text-gray-500">
-          © {new Date().getFullYear()} CP_EVENT // TERMINAL_V.2.0
+        <p className="font-ui text-xs text-gray-500 uppercase tracking-widest">
+          © {new Date().getFullYear()} MATH-ROYALE // TERMINAL_V.2.0
         </p>
       </footer>
     </main>

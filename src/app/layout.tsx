@@ -40,9 +40,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Codeforces Bingo | Code Competition",
-  description: "Solve competitive programming problems and complete bingo lines to climb the leaderboard.",
-  keywords: ["codeforces", "bingo", "competitive programming", "coding contest"],
+  title: "Math-Royale | Math Competition",
+  description: "Solve competitive programming problems and compete in the Math-Royale tournament to climb the leaderboard.",
+  keywords: ["math-royale", "competitive programming", "coding contest", "math competition"],
 };
 
 import { headers } from "next/headers";

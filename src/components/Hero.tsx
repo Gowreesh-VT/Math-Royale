@@ -40,15 +40,15 @@ export default function Hero() {
             {text}<span className="animate-pulse">_</span>
           </div>
           
-          <h1 className="font-ui text-6xl md:text-9xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-600 mb-6 leading-tight">
-            CODE<br className="md:hidden" />
-            <span className="text-primary">BINGO</span>
+          <h1 className="font-ui text-5xl md:text-8xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-600 mb-6 leading-tight uppercase">
+            MATH<br className="md:hidden" />
+            <span className="text-primary">ROYALE</span>
           </h1>
 
           <p className="font-ui text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-            Competition is inevitable. Logic is your weapon. 
+            The ultimate competitive math showdown.
             <br />
-            Complete the lines to dominate the leaderboard.
+            Dominate the arena and claim your glory.
           </p>
 
           <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
