@@ -17,7 +17,7 @@ MONGODB_URI=mongodb://localhost:27017/cp_event
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 NEXTAUTH_SECRET=replace_with_a_long_random_secret
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=your_production_url_here
 ```
 
 Notes:
