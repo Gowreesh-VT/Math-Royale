@@ -1,4 +1,4 @@
-# Scripts Documentation
+# Math-Royale Scripts Documentation
 
 **Last Updated:** April 2026
 
@@ -27,12 +27,12 @@ npm run advance-round-multi B   # Eliminate 60%, create and auto-start Round C
 
 ---
 
-## Round 2 Multi-Round Scripts
+## Tournament Management (Round 2)
 
 **`initialize-tournament-multi.ts`** - Create Round A matches
 - **Usage:** `npm run initialize-tournament-multi`
 - Gets all eligible teams with `hasRound2Access: true`
-- Distributes them into multiple 4v4 matches (or similar chunks)
+- Distributes them into multiple 1v1 matches for Round A
 - Status: 'pending' (requires `start-round-multi`)
 
 **`start-round-multi.ts`** - Activate a specific round stage

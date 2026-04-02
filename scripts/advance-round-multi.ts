@@ -152,14 +152,16 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     const startTime = new Date();
     const endTime = new Date(Date.now() + nextRoundObj.duration * 1000);
 
-    for (let i = 0; i < shuffledTeams.length; i += 8) {
-      const matchTeams = shuffledTeams.slice(i, Math.min(i + 8, shuffledTeams.length));
+    for (let i = 0; i < shuffledTeams.length; i += 2) {
+      const matchTeams = shuffledTeams.slice(i, Math.min(i + 2, shuffledTeams.length));
       
-      if (matchTeams.length < 2) continue;
+      if (matchTeams.length < 2) {
+        console.log(`⚠️  Odd team found: ${matchTeams[0].teamName} - skipping (needs opponent)`);
+        continue;
+      }
       
-      const halfPoint = Math.floor(matchTeams.length / 2);
-      const sideA_teams = matchTeams.slice(0, halfPoint);
-      const sideB_teams = matchTeams.slice(halfPoint);
+      const sideA_teams = [matchTeams[0]];
+      const sideB_teams = [matchTeams[1]];
       
       const questionIdsA = questionsA_all.slice(0, 4).map(q => q._id);
       const questionIdsB = questionsB_all.slice(0, 4).map(q => q._id);

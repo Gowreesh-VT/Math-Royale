@@ -1,7 +1,7 @@
 /**
  * Initialize Multi-Round Tournament (A, B, C)
  * 
- * Creates Round A with multiple 4v4 matches from all qualifying teams
+ * Creates Round A with 1v1 matches from all qualifying teams
  * Round B and C created as empty (pending) - will be populated after each round
  * 
  * Prerequisites:
@@ -13,7 +13,7 @@
  * 
  * What it does:
  * - Fetches all teams with hasRound2Access = true
- * - Groups them into multiple 4v4 matches for Round A
+ * - Groups them into 1v1 matches for Round A
  * - Creates Round2Stage records for A, B, C (B and C empty/pending)
  */
 
@@ -42,8 +42,8 @@ async function initializeTournamentMulti() {
     console.log('📋 Fetching all teams with hasRound2Access = true...');
     const allTeams = await Team.find({ hasRound2Access: true }).lean();
     
-    if (allTeams.length < 4) {
-      console.error(`Need at least 4 teams, found ${allTeams.length}`);
+    if (allTeams.length < 2) {
+      console.error(`Need at least 2 teams, found ${allTeams.length}`);
       process.exit(1);
     }
     
@@ -105,9 +105,8 @@ async function initializeTournamentMulti() {
       const teamIndices = shuffled.slice(i, Math.min(i + 2, shuffled.length));
       const matchTeams = teamIndices.map(idx => allTeams[idx]);
 
-      // Skip if less than 2 teams
       if (matchTeams.length < 2) {
-        console.log(`Skipping group with only ${matchTeams.length} teams`);
+        console.log(`⚠️  Odd team found: ${matchTeams[0].teamName} - skipping (needs an opponent for 1v1)`);
         continue;
       }
 
