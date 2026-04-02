@@ -52,8 +52,8 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
       throw new Error('Invalid round');
     }
 
-    console.log(`\n📊 Advancing from Round ${fromRound} → Round ${nextRound}`);
-    console.log(`🔥 Elimination threshold: ${eliminationPercent}%\n`);
+    console.log(`\nAdvancing from Round ${fromRound} → Round ${nextRound}`);
+    console.log(`Elimination threshold: ${eliminationPercent}%\n`);
 
     const currentRound = await Round2Stage.findOne({ roundStage: fromRound });
     if (!currentRound) {
@@ -69,7 +69,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
          console.error(`Round ${fromRound} has incomplete matches. Finish them first.`);
          process.exit(1);
        }
-       console.log(`📝 Auto-completing Round ${fromRound} since all matches finished...`);
+       console.log(`Auto-completing Round ${fromRound} since all matches finished...`);
        currentRound.status = 'completed';
        await currentRound.save();
     }
@@ -147,7 +147,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     const newMatchIds: mongoose.Types.ObjectId[] = [];
     let matchNumber = 1;
     
-    console.log(`\n🎲 Creating Round ${nextRound} Matches...`);
+    console.log(`\nCreating Round ${nextRound} Matches...`);
     
     const startTime = new Date();
     const endTime = new Date(Date.now() + nextRoundObj.duration * 1000);
@@ -156,7 +156,7 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
       const matchTeams = shuffledTeams.slice(i, Math.min(i + 2, shuffledTeams.length));
       
       if (matchTeams.length < 2) {
-        console.log(`⚠️  Odd team found: ${matchTeams[0].teamName} - skipping (needs opponent)`);
+        console.log(`Odd team found: ${matchTeams[0].teamName} - skipping (needs opponent)`);
         continue;
       }
       

@@ -4,12 +4,12 @@ import { motion } from 'framer-motion';
 
 const organizers = [
   { name: 'CodeChef VIT Chennai Chapter', role: 'Event Organizer', image: 'https://github.com/CodeChefVIT.png' },
-  { name: 'Microsoft Innovation Club', role: 'Event Organizer', image: 'https://github.com/MIC-VIT.png' },
+  { name: 'Mathematics Club VIT Chennai', role: 'Event Organizer', image: '/Math-Club.png' },
 ];
 
 export default function Organizers() {
   return (
-    <section id="organizers" className="py-24 relative overflow-hidden">
+    <section id="organizers" className="pb-32 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <motion.div
            initial={{ opacity: 0 }}
