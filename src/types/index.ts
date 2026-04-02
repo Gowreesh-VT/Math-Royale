@@ -1,5 +1,5 @@
 // ===========================================
-// TYPE DEFINITIONS FOR CODEFORCES BINGO
+// TYPE DEFINITIONS FOR MATH-ROYALE
 // ===========================================
 
 export interface ITeam {

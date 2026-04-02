@@ -1,62 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏆 Math-Royale Tournament System
 
-## Environment Setup
+![Next.js](https://img.shields.io/badge/Next.js-15.5.14-black?logo=next.js)
+![MongoDB](https://img.shields.io/badge/MongoDB-7.0.0-green?logo=mongodb)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-blue?logo=tailwindcss)
 
-This codebase reads its environment variables from `.env.local` for both the Next.js app and the tournament scripts.
+**Math-Royale** is a high-stakes competitive programming and mathematical showdown platform. It features a dynamic, multi-round tournament structure with real-time scoring and elimination mechanics.
 
-Start from the checked-in template:
+---
+
+## ✨ Key Features
+
+*   ⚔️ **1v1 Tug of War**: Real-time competitive matching where solving speed and accuracy shift the score balance.
+*   📉 **Dynamic Advancement**: Automated stage-based progression (Stage A → B → C) with configurable elimination thresholds.
+*   🔒 **NextAuth Integration**: Secure team authentication via Google with custom JWT session handling.
+*   📊 **Real-time Leaderboards**: Global and round-specific rankings to track the best mathematicians and coders in the tournament.
+*   🛠️ **CLI Admin Tools**: Comprehensive command-line interface for managing teams, matches, and tournament progression.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Environment Setup
+
+Copy the example environment file and fill in your secrets:
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-Required variables:
+| Variable               | Description                                      |
+| :--------------------- | :----------------------------------------------- |
+| `MONGODB_URI`          | Your MongoDB connection string.                  |
+| `GOOGLE_CLIENT_ID`     | Google Cloud Console OAuth Client ID.            |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console OAuth Client Secret.        |
+| `NEXTAUTH_SECRET`      | A unique, random secret for session encryption.  |
+| `NEXTAUTH_URL`         | The canonical URL of your site (Production).     |
 
-```env
-MONGODB_URI=mongodb://localhost:27017/cp_event
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-NEXTAUTH_SECRET=replace_with_a_long_random_secret
-NEXTAUTH_URL=your_production_url_here
-```
+### 2. Development Workflow
 
-Notes:
-- `MONGODB_URI` is used throughout the app and admin scripts.
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `NEXTAUTH_SECRET` are required for login.
-- `NEXTAUTH_URL` is optional in local development, but recommended and effectively required in production deployments.
-- `NODE_ENV` is referenced by the code, but Next.js sets that automatically.
-
-## Getting Started
-
-First, run the development server:
+Install dependencies and start the local survival server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000` to see the arena.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🏆 Tournament Management
 
-## Learn More
+Managing the tournament is handled via scripts in the `scripts/` directory.
 
-To learn more about Next.js, take a look at the following resources:
+### Core Lifecycle Scripts:
+*   **Seed Content**: `npm run seed-round2`
+*   **Initialize**: `npm run initialize-tournament-multi` (Setup Stage A)
+*   **Advance**: `npm run advance-round-multi A` (Move A → B)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For a complete guide on running the tournament, see:
+👉 **[Tournament Guide](./scripts/tournament_guide.md)** (Admin Manual)
+👉 **[Scripts Documentation](./scripts/SCRIPTS.md)** (CLI Reference)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+*   **Framework**: [Next.js](https://nextjs.org) (App Router)
+*   **Database**: [MongoDB](https://mongodb.com) via [Mongoose](https://mongoosejs.com)
+*   **Authentication**: [NextAuth.js](https://next-auth.js.org)
+*   **Styling**: Vanilla CSS + Tailwind-inspired utilities
+*   **Animations**: [Framer Motion](https://www.framer.com/motion/)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 📄 License
+
+This project is intended for tournament organization. All rights reserved by the event coordinators.
