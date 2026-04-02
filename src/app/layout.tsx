@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 
-import CustomCursor from "@/components/CustomCursor";
 
 
 const inter = Inter({
@@ -43,6 +42,10 @@ export const metadata: Metadata = {
   title: "Math-Royale | Math Competition",
   description: "Solve competitive programming problems and compete in the Math-Royale tournament to climb the leaderboard.",
   keywords: ["math-royale", "competitive programming", "coding contest", "math competition"],
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 import { headers } from "next/headers";
@@ -60,7 +63,6 @@ export default async function RootLayout({
         className={`${inter.variable} ${cormorant.variable} ${spaceMono.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <CustomCursor />
           
           {children}
         </Providers>
