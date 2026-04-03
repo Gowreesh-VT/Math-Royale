@@ -22,6 +22,7 @@ import Round2Stage from '../src/models/Round2Stage';
 import Match from '../src/models/Match';
 import MatchSubmission from '../src/models/MatchSubmission';
 import Round2Question from '../src/models/Round2Question';
+import PowerUpAttempt from '../src/models/PowerUpAttempt';
 import Team from '../src/models/Team';
 import { TOW_INITIAL_SCORE } from '../src/lib/constants';
 
@@ -80,39 +81,96 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
       process.exit(1);
     }
     
-    const teamScores = new Map<string, number>();
+    // 1. Identify all teams that participated in the current stage
+    const participatingTeamIds = new Set<string>();
     for (const match of matches) {
-      for (const teamId of [...match.sideA_teamIds, ...match.sideB_teamIds]) {
-        teamScores.set(teamId.toString(), 0);
+      for (const tid of [...match.sideA_teamIds, ...match.sideB_teamIds]) {
+        participatingTeamIds.add(tid.toString());
       }
     }
-    
-    const submissions = await MatchSubmission.find({ 
-      matchId: { $in: currentRound.matchIds },
-      verdict: 'OK'
-    });
-    
-    for (const sub of submissions) {
-      const current = teamScores.get(sub.teamId.toString()) || 0;
-      teamScores.set(sub.teamId.toString(), current + sub.points);
-    }
-    
-    const sortedTeams = Array.from(teamScores.entries()).sort((a, b) => b[1] - a[1]);
-    const totalTeams = sortedTeams.length;
-    
-    if (totalTeams === 0) {
+
+    if (participatingTeamIds.size === 0) {
       console.error('No teams found participating in this round.');
       process.exit(1);
     }
+
+    // 2. Fetch ALL Matches across ALL stages to calculate CUMULATIVE score
+    const allMatches = await Match.find({ 
+      roundStage: { $in: fromRound === 'A' ? ['A'] : ['A', 'B'] } 
+    }).lean();
+    const matchIds = allMatches.map(m => m._id);
+
+    // 3. Calculate Cumulative Scores and find the Last Valid Submission Time (for tie-breaking)
+    const teamScores = new Map<string, number>();
+    const teamLastSuccess = new Map<string, number>();
+
+    // Initial scores for all participants
+    for (const tid of participatingTeamIds) {
+      teamScores.set(tid, 0);
+      teamLastSuccess.set(tid, Date.now()); // Default to now
+    }
+
+    const submissions = await MatchSubmission.find({ 
+      matchId: { $in: matchIds },
+      verdict: 'OK'
+    }).lean();
+
+    const powerUpAttempts = await PowerUpAttempt.find({
+      matchId: { $in: matchIds },
+      pointsDelta: { $gt: 0 } // Only positive contributors for "last finish" time
+    }).lean();
+
+    // Standard scoring
+    for (const sub of submissions) {
+      const tid = sub.teamId.toString();
+      if (participatingTeamIds.has(tid)) {
+        teamScores.set(tid, (teamScores.get(tid) || 0) + sub.points);
+        const t = sub.timestamp.getTime();
+        if (!teamLastSuccess.has(tid) || t > teamLastSuccess.get(tid)!) {
+           teamLastSuccess.set(tid, t);
+        }
+      }
+    }
+
+    // Power-up scoring (including penalties)
+    const allPowerUpAttempts = await PowerUpAttempt.find({
+        matchId: { $in: matchIds }
+    }).lean();
     
-    const targetAdvanceCount = fromRound === 'A' ? 12 : 6;
-    const advanceCount = Math.min(totalTeams, targetAdvanceCount);
-    const eliminateCount = totalTeams - advanceCount;
+    for (const pu of allPowerUpAttempts) {
+        const tid = pu.teamId.toString();
+        if (participatingTeamIds.has(tid)) {
+          teamScores.set(tid, (teamScores.get(tid) || 0) + pu.pointsDelta);
+          if (pu.pointsDelta > 0) {
+            const t = pu.timestamp.getTime();
+            if (!teamLastSuccess.has(tid) || t > teamLastSuccess.get(tid)!) {
+              teamLastSuccess.set(tid, t);
+            }
+          }
+        }
+    }
+
+    // 4. Ranking Logic with Time-Based Tie-Breaking
+    const sortedTeams = Array.from(teamScores.entries()).sort((a, b) => {
+      // Score (Descending)
+      if (b[1] !== a[1]) return b[1] - a[1];
+      // Time (Ascending - earlier is better)
+      const timeA = teamLastSuccess.get(a[0]) || Date.now();
+      const timeB = teamLastSuccess.get(b[0]) || Date.now();
+      return timeA - timeB;
+    });
+
+    const totalInRound = sortedTeams.length;
+    
+    // 5. Percentage-Based Thresholds (60% for A, 40% for B)
+    const percent = fromRound === 'A' ? 60 : 40;
+    const advanceCount = Math.ceil((totalInRound * percent) / 100);
+    const eliminateCount = totalInRound - advanceCount;
     
     const advancingTeamIds = sortedTeams.slice(0, advanceCount).map(t => new mongoose.Types.ObjectId(t[0]));
     const eliminatedTeamIds = sortedTeams.slice(advanceCount).map(t => new mongoose.Types.ObjectId(t[0]));
     
-    console.log(`🏆 ${advanceCount} Teams Advancing`);
+    console.log(`\n🏆 ${advanceCount} Teams Advancing (Top ${percent}% of ${totalInRound})`);
     console.log(`☠️  ${eliminateCount} Teams Eliminated`);
     
     if (eliminatedTeamIds.length > 0) {

@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Security: Remove X-Powered-By header
   poweredByHeader: false,
 
+  // Standalone output for Azure App Service deployment
+  output: 'standalone',
+
   // Security Headers
   async headers() {
     return [
