@@ -23,7 +23,7 @@ import Team from '../src/models/Team';
 import Round2Stage from '../src/models/Round2Stage';
 import Match from '../src/models/Match';
 import Round2Question from '../src/models/Round2Question';
-import { TOW_INITIAL_SCORE } from '../src/lib/constants';
+import { TOW_INITIAL_SCORE, ROUND_A_DURATION, ROUND_B_DURATION, ROUND_C_DURATION } from '../src/lib/constants';
 
 dotenv.config({ path: '.env.local' });
 
@@ -73,8 +73,8 @@ async function initializeTournamentMulti() {
       side: 'B' 
     }).lean();
     
-    if (questionsA_all.length < 4 || questionsB_all.length < 4) {
-      console.error(`Need at least 4 questions per side.`);
+    if (questionsA_all.length < 3 || questionsB_all.length < 3) {
+      console.error(`Need at least 3 questions per side.`);
       console.error(`   Found ${questionsA_all.length} for Side A, ${questionsB_all.length} for Side B.`);
       console.error('   Run: npm run seed-round2');
       process.exit(1);
@@ -114,9 +114,9 @@ async function initializeTournamentMulti() {
       const sideA_teams = matchTeams.slice(0, halfPoint);
       const sideB_teams = matchTeams.slice(halfPoint);
 
-      // Use first 4 questions for each side
-      const questionIdsA = questionsA_all.slice(0, 4).map(q => q._id);
-      const questionIdsB = questionsB_all.slice(0, 4).map(q => q._id);
+      // Use first 3 questions for each side
+      const questionIdsA = questionsA_all.slice(0, 3).map(q => q._id);
+      const questionIdsB = questionsB_all.slice(0, 3).map(q => q._id);
 
       const match = await new Match({
         roundStage: 'A',
@@ -130,7 +130,7 @@ async function initializeTournamentMulti() {
         status: 'waiting',
         questionPoolA: questionIdsA,
         questionPoolB: questionIdsB,
-        duration: 1800, // 30 mins + 10 buffer
+        duration: ROUND_A_DURATION, // 30 mins
       }).save();
 
       console.log(`Match ${matchNumber} created (${sideA_teams.length}v${sideB_teams.length})`);
@@ -150,7 +150,7 @@ async function initializeTournamentMulti() {
       matchIds,
       totalTeams: allTeams.length,
       status: 'pending',
-      duration: 1800,
+      duration: ROUND_A_DURATION,
     });
 
     const roundB = await Round2Stage.create({
@@ -159,7 +159,7 @@ async function initializeTournamentMulti() {
       matchIds: [],
       totalTeams: 0,
       status: 'pending',
-      duration: 1800,
+      duration: ROUND_B_DURATION,
     });
 
     const roundC = await Round2Stage.create({
@@ -168,7 +168,7 @@ async function initializeTournamentMulti() {
       matchIds: [],
       totalTeams: 0,
       status: 'pending',
-      duration: 2400,
+      duration: ROUND_C_DURATION,
     });
 
     console.log(`Round A: ${matchIds.length} match(es) created`);

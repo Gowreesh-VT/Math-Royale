@@ -105,8 +105,9 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
       process.exit(1);
     }
     
-    const eliminateCount = Math.floor(totalTeams * (eliminationPercent / 100));
-    const advanceCount = totalTeams - eliminateCount;
+    const targetAdvanceCount = fromRound === 'A' ? 12 : 6;
+    const advanceCount = Math.min(totalTeams, targetAdvanceCount);
+    const eliminateCount = totalTeams - advanceCount;
     
     const advancingTeamIds = sortedTeams.slice(0, advanceCount).map(t => new mongoose.Types.ObjectId(t[0]));
     const eliminatedTeamIds = sortedTeams.slice(advanceCount).map(t => new mongoose.Types.ObjectId(t[0]));
@@ -125,8 +126,8 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
     const questionsA_all = await Round2Question.find({ roundNumber: nextRoundNumber, side: 'A' }).lean();
     const questionsB_all = await Round2Question.find({ roundNumber: nextRoundNumber, side: 'B' }).lean();
     
-    if (questionsA_all.length < 4 || questionsB_all.length < 4) {
-      console.error(`Need at least 4 questions per side for Next Round (Phase ${nextRoundNumber}).`);
+    if (questionsA_all.length < 3 || questionsB_all.length < 3) {
+      console.error(`Need at least 3 questions per side for Next Round (Phase ${nextRoundNumber}).`);
       process.exit(1);
     }
     
@@ -163,8 +164,8 @@ async function advanceRoundMulti(fromRound: 'A' | 'B') {
       const sideA_teams = [matchTeams[0]];
       const sideB_teams = [matchTeams[1]];
       
-      const questionIdsA = questionsA_all.slice(0, 4).map(q => q._id);
-      const questionIdsB = questionsB_all.slice(0, 4).map(q => q._id);
+      const questionIdsA = questionsA_all.slice(0, 3).map(q => q._id);
+      const questionIdsB = questionsB_all.slice(0, 3).map(q => q._id);
       
       const match = await new Match({
         roundStage: nextRound,

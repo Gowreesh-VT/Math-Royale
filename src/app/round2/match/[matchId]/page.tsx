@@ -30,7 +30,7 @@ interface PowerUpState {
   attemptCount: number;
   totalDelta: number;
   fullMarks: number;
-  effectLabel: 'ADD_POINTS' | 'DOUBLE_CURRENT_SCORE';
+  effectLabel: 'ADD_POINTS' | 'DOUBLE_OR_HALF';
   question: {
     contestId: string;
     problemIndex: string;
@@ -40,7 +40,6 @@ interface PowerUpState {
   attempts: Array<{
     submissionId: number;
     verdict: string;
-    passedTestCount: number;
     pointsDelta: number;
     timestamp: string;
   }>;
@@ -70,7 +69,7 @@ export default function Round2MatchPage() {
   const [showPowerUpOverlay, setShowPowerUpOverlay] = useState(false);
   const [data, setData] = useState<MatchResponse | null>(null);
   const [mySide, setMySide] = useState<'A' | 'B'>('A');
-  const [timeRemaining, setTimeRemaining] = useState<number>(2700);
+  const [timeRemaining, setTimeRemaining] = useState<number>(1800);
   const [loading, setLoading] = useState(true);
 
   const teamId = session?.user?.teamId || '';
@@ -187,27 +186,27 @@ export default function Round2MatchPage() {
   const hasRoundPowerUp = (data.match.roundNumber === 2 || data.match.roundNumber === 3) && !!powerUp?.available;
   const powerUpLabel = data.match.roundNumber === 3 ? 'Finals Power-Up' : 'Semifinals Power-Up';
   const powerUpSummary = data.match.roundNumber === 3
-    ? 'Gamble your current score on one special bitwise problem. Clear it fully and your side score doubles. Miss a single test and nothing changes.'
-    : 'Pause the standard flow and attack a lighter combinatorics steal problem for a faster score swing.';
-  const introTitle = data.match.roundNumber === 3 ? 'Double or Nothing' : 'Steal Option';
+    ? 'Double your points earned above 50 on one special problem. Clear it fully to double, else they are halved.'
+    : 'Pause the standard flow and attack a lighter steal problem for bonus points.';
+  const introTitle = data.match.roundNumber === 3 ? 'Double or Half' : 'Steal Option';
   const introBody = data.match.roundNumber === 3
     ? [
-        'In Finals, your team can gamble its current score by attempting one special Double or Nothing problem instead of sticking to the assigned pace.',
-        'If you solve the special problem completely, your current side score is doubled instantly.',
-        'If even one test case fails, your score remains exactly the same. No bonus, no penalty.',
+        'In Finals, your team can gamble your success by attempting one special "Double or Half" problem.',
+        'If you solve it completely, your points earned above the base score (50) will be doubled.',
+        'If even one test case fails, your points earned above 50 will be halved (rounded down).',
       ]
     : [
-        'In Semifinals, your team can either stay on the assigned track or attempt a special Steal problem that is easier and faster to convert into points.',
-        'If you solve the Steal problem, your side gets full marks. If you fail, the system deducts points progressively based on how far the submission reached before failing.',
-        'All scoring still happens through Codeforces submissions on your saved handle, and the match sync will pick them up automatically.',
+        'In Semifinals, your team can attempt a special Steal problem that is easier and adds points directly to your score.',
+        'If you solve the Steal problem, your side gets full marks (+10). If you fail, you get a fixed penalty of -10.',
+        'All scoring still happens through Codeforces submissions on your saved handle.',
       ];
-  const rewardText = powerUp?.effectLabel === 'DOUBLE_CURRENT_SCORE' ? 'x2 Score' : `+${powerUp?.fullMarks ?? 0}`;
-  const failedText = powerUp?.effectLabel === 'DOUBLE_CURRENT_SCORE'
-    ? 'No Change'
+  const rewardText = powerUp?.effectLabel === 'DOUBLE_OR_HALF' ? 'Double Points' : `+${powerUp?.fullMarks ?? 0}`;
+  const failedText = powerUp?.effectLabel === 'DOUBLE_OR_HALF'
+    ? 'Half Points'
     : 'Penalty';
-  const failedDescription = powerUp?.effectLabel === 'DOUBLE_CURRENT_SCORE'
-    ? 'Any non-accepted verdict leaves your score untouched.'
-    : 'Deduction scales with how deep the failed run reached before it broke.';
+  const failedDescription = powerUp?.effectLabel === 'DOUBLE_OR_HALF'
+    ? 'Any non-accepted verdict will halve your points above 50.'
+    : 'A fixed penalty of -10 points is applied for failed attempts.';
 
   const BASE_SCORE = 50;
   const MAX_SCORE = 75;
@@ -333,7 +332,7 @@ export default function Round2MatchPage() {
 
           <div className="flex justify-center gap-6 text-[10px] uppercase tracking-widest text-white/40">
             <span>✔ Accepted: +10</span>
-            <span>✖ Wrong: −5</span>
+            <span>✖ Wrong: 0</span>
             <span>🏁 Win at 75</span>
           </div>
 
@@ -430,7 +429,7 @@ export default function Round2MatchPage() {
           <p>Scoring System</p>
           <ul className="space-y-1">
             <li>✔ Correct submission: +10 points</li>
-            <li>✖ Wrong answer: −5 points</li>
+            <li>✖ Wrong answer: 0 points</li>
             <li>🏁 Win at 75 points or timeout</li>
           </ul>
         </section>
@@ -562,8 +561,8 @@ export default function Round2MatchPage() {
                       <div className="border border-emerald-400/20 bg-emerald-400/10 p-4 rounded-lg">
                         <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-200/70">Solved</p>
                         <p className="mt-2 text-3xl font-black text-emerald-300">{rewardText}</p>
-                        <p className="mt-2 text-xs uppercase tracking-widest text-emerald-100/60">
-                          {powerUp.effectLabel === 'DOUBLE_CURRENT_SCORE' ? 'Your current side score doubles instantly' : 'Full marks granted instantly'}
+                        <p className={`mt-2 text-xs uppercase tracking-widest ${powerUp.effectLabel === 'DOUBLE_OR_HALF' ? 'text-emerald-100/60' : 'text-emerald-100/60'}`}>
+                          {powerUp.effectLabel === 'DOUBLE_OR_HALF' ? 'Your points above 50 are doubled' : 'Full marks granted instantly'}
                         </p>
                       </div>
                       <div className="border border-red-400/20 bg-red-400/10 p-4 rounded-lg">
@@ -621,9 +620,6 @@ export default function Round2MatchPage() {
                               {attempt.pointsDelta > 0 ? `+${attempt.pointsDelta}` : attempt.pointsDelta}
                             </p>
                           </div>
-                          <p className="mt-2 text-[10px] uppercase tracking-[0.25em] text-white/35">
-                            Passed tests: {attempt.passedTestCount}
-                          </p>
                         </div>
                       ))}
                     </div>
