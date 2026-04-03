@@ -49,6 +49,52 @@ Visit `http://localhost:3000` to see the arena.
 
 ---
 
+## ☁️ Deploy to Azure App Service
+
+This repository includes a GitHub Actions workflow for Azure App Service deployment:
+
+*   `.github/workflows/deploy-azure-webapp.yml`
+
+### 1. Create Azure resources
+
+Use Azure Portal or Azure CLI to create:
+
+*   Resource Group
+*   Linux App Service Plan
+*   Web App (Node.js 20)
+
+### 2. Configure App Service startup command
+
+In the Web App Configuration (General settings), set Startup Command to:
+
+```bash
+node server.js
+```
+
+### 3. Add App Service environment variables
+
+In App Service -> Settings -> Environment variables, add at least:
+
+*   `NODE_ENV=production`
+*   `MONGODB_URI=...`
+*   `GOOGLE_CLIENT_ID=...`
+*   `GOOGLE_CLIENT_SECRET=...`
+*   `NEXTAUTH_SECRET=...`
+*   `NEXTAUTH_URL=https://<your-webapp-name>.azurewebsites.net`
+
+### 4. Add GitHub secrets
+
+In GitHub -> Settings -> Secrets and variables -> Actions, add:
+
+*   `AZURE_WEBAPP_NAME` (example: `math-royale-prod`)
+*   `AZURE_WEBAPP_PUBLISH_PROFILE` (download from App Service -> Get publish profile)
+
+### 5. Deploy
+
+Push to `main` (or run the workflow manually). The workflow builds Next.js standalone output and deploys it to Azure.
+
+---
+
 ## 🏆 Tournament Management
 
 Managing the tournament is handled via scripts in the `scripts/` directory.
