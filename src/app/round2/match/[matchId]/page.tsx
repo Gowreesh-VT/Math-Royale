@@ -30,7 +30,7 @@ interface PowerUpState {
   attemptCount: number;
   totalDelta: number;
   fullMarks: number;
-  effectLabel: 'ADD_POINTS' | 'DOUBLE_OR_HALF';
+  effectLabel: 'ADD_POINTS' | 'DOUBLE_OR_HALF' | 'SWAP_QUESTIONS';
   question: {
     contestId: string;
     problemIndex: string;
@@ -67,10 +67,13 @@ export default function Round2MatchPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPowerUpIntro, setShowPowerUpIntro] = useState(false);
   const [showPowerUpOverlay, setShowPowerUpOverlay] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
   const [data, setData] = useState<MatchResponse | null>(null);
   const [mySide, setMySide] = useState<'A' | 'B'>('A');
   const [timeRemaining, setTimeRemaining] = useState<number>(1800);
   const [loading, setLoading] = useState(true);
+  const [selectedPlayerQuestion, setSelectedPlayerQuestion] = useState<number | null>(null);
+  const [selectedOpponentQuestion, setSelectedOpponentQuestion] = useState<number | null>(null);
 
   const teamId = session?.user?.teamId || '';
 
@@ -172,6 +175,35 @@ export default function Round2MatchPage() {
     return () => clearInterval(interval);
   }, [data?.match?.status, fetchMatch, matchId]);
 
+  const handleExecuteSwap = async () => {
+    if (selectedPlayerQuestion === null || selectedOpponentQuestion === null) {
+      return;
+    }
+
+    try {
+      const res = await secureFetch('/api/Round-2/steal-swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchId,
+          playerUnansweredIndex: selectedPlayerQuestion,
+          opponentQuestionIndex: selectedOpponentQuestion,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setShowSwapModal(false);
+        setSelectedPlayerQuestion(null);
+        setSelectedOpponentQuestion(null);
+        fetchMatch();
+      }
+    } catch (error) {
+      console.error('[Swap] Failed:', error);
+    }
+  };
+
   if (loading || !data) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white/40 uppercase tracking-widest text-xs">
@@ -187,8 +219,8 @@ export default function Round2MatchPage() {
   const powerUpLabel = data.match.roundNumber === 3 ? 'Finals Power-Up' : 'Semifinals Power-Up';
   const powerUpSummary = data.match.roundNumber === 3
     ? 'Double your points earned above 50 on one special problem. Clear it fully to double, else they are halved.'
-    : 'Pause the standard flow and attack a lighter steal problem for bonus points.';
-  const introTitle = data.match.roundNumber === 3 ? 'Double or Half' : 'Steal Option';
+    : 'Swap your unanswered questions with opponent questions after solving the steal problem.';
+  const introTitle = data.match.roundNumber === 3 ? 'Double or Half' : 'Steal & Swap';
   const introBody = data.match.roundNumber === 3
     ? [
         'In Finals, your team can gamble your success by attempting one special "Double or Half" problem.',
@@ -197,10 +229,10 @@ export default function Round2MatchPage() {
       ]
     : [
         'In Semifinals, your team can attempt a special Steal problem that is easier and adds points directly to your score.',
-        'If you solve the Steal problem, your side gets full marks (+10). If you fail, you get a fixed penalty of -10.',
+        'If you solve the Steal problem, you unlock the ability to swap one of your unanswered questions with any question from the opponent.',
         'All scoring still happens through Codeforces submissions on your saved handle.',
       ];
-  const rewardText = powerUp?.effectLabel === 'DOUBLE_OR_HALF' ? 'Double Points' : `+${powerUp?.fullMarks ?? 0}`;
+  const rewardText = powerUp?.effectLabel === 'DOUBLE_OR_HALF' ? 'Double Points' : powerUp?.effectLabel === 'SWAP_QUESTIONS' ? 'Swap Questions' : `+${powerUp?.fullMarks ?? 0}`;
   const failedText = powerUp?.effectLabel === 'DOUBLE_OR_HALF'
     ? 'Half Points'
     : 'Penalty';
@@ -402,7 +434,7 @@ export default function Round2MatchPage() {
           </h2>
 
           <div className="divide-y divide-white/10 border border-white/10 bg-[#0b0b0b]">
-            {my.questions.map((question) => (
+            {my.questions.map((question, index) => (
               <div
                 key={question.id}
                 onClick={() => window.open(`https://codeforces.com/contest/${question.contestId}/problem/${question.problemIndex}`, '_blank')}
@@ -520,7 +552,7 @@ export default function Round2MatchPage() {
             <div className="mx-auto max-w-5xl border border-amber-400/30 bg-[#050505]">
               <div className="flex flex-col gap-4 border-b border-white/10 p-6 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
-                  <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">Steal Overlay</p>
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-amber-300/80">Steal & Swap Overlay</p>
                   <h2 className="text-3xl font-black uppercase tracking-widest text-white">
                     {powerUp.question.problemIndex}. {powerUp.question.name}
                   </h2>
@@ -551,7 +583,7 @@ export default function Round2MatchPage() {
                     <div className="mt-4 space-y-3 text-sm uppercase tracking-wider text-white/70">
                       <p>Open the problem in a new tab, solve it there, and submit using the same Codeforces handle linked to your team.</p>
                       <p>Come back to this match screen after submitting. The live sync runs automatically every 30 seconds, so your score update will be reflected here.</p>
-                      <p>Once you solve the special problem, the power-up is considered consumed for this match.</p>
+                      <p>Once you solve the special problem, unlock the ability to swap one of your unanswered questions with an opponent's question.</p>
                     </div>
                   </div>
 
@@ -562,7 +594,7 @@ export default function Round2MatchPage() {
                         <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-200/70">Solved</p>
                         <p className="mt-2 text-3xl font-black text-emerald-300">{rewardText}</p>
                         <p className={`mt-2 text-xs uppercase tracking-widest ${powerUp.effectLabel === 'DOUBLE_OR_HALF' ? 'text-emerald-100/60' : 'text-emerald-100/60'}`}>
-                          {powerUp.effectLabel === 'DOUBLE_OR_HALF' ? 'Your points above 50 are doubled' : 'Full marks granted instantly'}
+                          {powerUp.effectLabel === 'DOUBLE_OR_HALF' ? 'Your points above 50 are doubled' : powerUp.effectLabel === 'SWAP_QUESTIONS' ? 'Unlock question swap ability' : 'Full marks granted instantly'}
                         </p>
                       </div>
                       <div className="border border-red-400/20 bg-red-400/10 p-4 rounded-lg">
@@ -574,6 +606,18 @@ export default function Round2MatchPage() {
                       </div>
                     </div>
                   </div>
+
+                  {powerUp.solved && powerUp.effectLabel === 'SWAP_QUESTIONS' && (
+                    <button
+                      onClick={() => {
+                        setShowPowerUpOverlay(false);
+                        setShowSwapModal(true);
+                      }}
+                      className="w-full px-6 py-4 border border-cyan-400/40 bg-cyan-400/15 hover:bg-cyan-400/25 text-cyan-200 font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+                    >
+                      Proceed to Question Swap
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -625,6 +669,107 @@ export default function Round2MatchPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSwapModal && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md overflow-y-auto">
+          <div className="min-h-screen px-4 py-8">
+            <div className="mx-auto max-w-5xl border border-cyan-400/30 bg-[#050505] p-6">
+              <h2 className="text-3xl font-black uppercase tracking-widest text-white mb-6">
+                Swap Questions
+              </h2>
+              <p className="text-sm uppercase tracking-wider text-white/60 mb-8">
+                Select one of your unanswered questions to swap with an opponent question
+              </p>
+
+              <div className="grid gap-8 lg:grid-cols-2 mb-8">
+                {/* Player Questions */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold uppercase tracking-widest text-cyan-200">
+                    Your Unanswered Questions
+                  </h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {my.questions
+                      .map((q, idx) => ({ question: q, index: idx }))
+                      .filter(({ question }) => !question.solved)
+                      .map(({ question, index }) => (
+                        <button
+                          key={question.id}
+                          onClick={() => setSelectedPlayerQuestion(index)}
+                          className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
+                            selectedPlayerQuestion === index
+                              ? 'border-cyan-400 bg-cyan-400/20'
+                              : 'border-white/10 bg-white/5 hover:bg-white/10'
+                          }`}
+                        >
+                          <p className="font-bold">
+                            {question.problemIndex}. {question.name}
+                          </p>
+                          <p className="text-xs text-white/40">
+                            Contest {question.contestId}
+                          </p>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Opponent Questions */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold uppercase tracking-widest text-amber-200">
+                    Opponent Questions
+                  </h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {opp.questions.map((question, index) => (
+                      <button
+                        key={question.id}
+                        onClick={() => setSelectedOpponentQuestion(index)}
+                        className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
+                          selectedOpponentQuestion === index
+                            ? 'border-amber-400 bg-amber-400/20'
+                            : 'border-white/10 bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-bold">
+                              {question.problemIndex}. {question.name}
+                            </p>
+                            <p className="text-xs text-white/40">
+                              Contest {question.contestId}
+                            </p>
+                          </div>
+                          <span className={`text-xs uppercase tracking-widest ${question.solved ? 'text-green-400' : 'text-white/30'}`}>
+                            {question.solved ? 'Solved' : 'Unsolved'}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end border-t border-white/10 pt-6">
+                <button
+                  onClick={() => {
+                    setShowSwapModal(false);
+                    setSelectedPlayerQuestion(null);
+                    setSelectedOpponentQuestion(null);
+                  }}
+                  className="px-6 py-3 border border-white/10 bg-white/5 hover:bg-white/10 text-white font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExecuteSwap}
+                  disabled={selectedPlayerQuestion === null || selectedOpponentQuestion === null}
+                  className="px-6 py-3 border border-cyan-400/40 bg-cyan-400/15 hover:bg-cyan-400/25 disabled:opacity-50 disabled:cursor-not-allowed text-cyan-200 font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
+                >
+                  Execute Swap
+                </button>
               </div>
             </div>
           </div>
