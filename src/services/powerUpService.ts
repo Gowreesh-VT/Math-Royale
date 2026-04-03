@@ -22,7 +22,7 @@ interface CFSubmission {
 export const STEAL_POWER_UP = {
   roundStage: 'B',
   key: 'semifinals-steal',
-  title: 'Steal Option',
+  title: 'Steal & Swap',
   contestId: '1771',
   problemIndex: 'A',
   name: 'Hossam and Combinatorics',
@@ -44,6 +44,12 @@ export const DOUBLE_OR_HALF_POWER_UP = {
 const POWER_UPS = [STEAL_POWER_UP, DOUBLE_OR_HALF_POWER_UP] as const;
 
 type PowerUpConfig = (typeof POWER_UPS)[number];
+
+interface QuestionSwap {
+  playerUnansweredIndex: string; // Index of player's unanswered question
+  opponentQuestionIndex: string; // Index of opponent's question being stolen
+  timestamp: Date;
+}
 
 function getPowerUpForRound(roundStage: string): PowerUpConfig | null {
   return POWER_UPS.find((powerUp) => powerUp.roundStage === roundStage) || null;
@@ -223,12 +229,59 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
     attemptCount: attempts.length,
     totalDelta,
     fullMarks: powerUp.fullMarks,
-    effectLabel: powerUp.key === DOUBLE_OR_HALF_POWER_UP.key ? 'DOUBLE_OR_HALF' : 'ADD_POINTS',
+    effectLabel: powerUp.key === DOUBLE_OR_HALF_POWER_UP.key ? 'DOUBLE_OR_HALF' : 'SWAP_QUESTIONS',
     attempts: attempts.map((attempt) => ({
       submissionId: attempt.submissionId,
       verdict: attempt.verdict,
       pointsDelta: attempt.pointsDelta,
       timestamp: attempt.timestamp,
     })),
+  };
+}
+
+/**
+ * Execute a question swap when the steal powerup is successfully used
+ * Player swaps one of their unanswered questions with one of the opponent's questions
+ */
+export async function executeQuestionSwap(
+  matchId: Types.ObjectId | string,
+  playerId: string,
+  playerUnansweredIndex: number,
+  opponentQuestionIndex: number
+): Promise<QuestionSwap | null> {
+  const match = await Match.findById(matchId);
+
+  if (!match) {
+    return null;
+  }
+
+  // Determine sides
+  const playerSide = match.sideA_handles.includes(playerId) ? 'A' : 'B';
+  const opponentSide = playerSide === 'A' ? 'B' : 'A';
+
+  const playerQuestions = playerSide === 'A' ? (match as any).sideA_questions : (match as any).sideB_questions;
+  const opponentQuestions = opponentSide === 'A' ? (match as any).sideA_questions : (match as any).sideB_questions;
+
+  // Validate indices
+  if (playerUnansweredIndex >= playerQuestions.length || opponentQuestionIndex >= opponentQuestions.length) {
+    return null;
+  }
+
+  // Verify player's question is unanswered
+  if (playerQuestions[playerUnansweredIndex].solved) {
+    return null;
+  }
+
+  // Swap the questions
+  const tempQuestion = playerQuestions[playerUnansweredIndex];
+  playerQuestions[playerUnansweredIndex] = opponentQuestions[opponentQuestionIndex];
+  opponentQuestions[opponentQuestionIndex] = tempQuestion;
+
+  await match.save();
+
+  return {
+    playerUnansweredIndex: playerQuestions[playerUnansweredIndex].problemIndex,
+    opponentQuestionIndex: opponentQuestions[opponentQuestionIndex].problemIndex,
+    timestamp: new Date(),
   };
 }
