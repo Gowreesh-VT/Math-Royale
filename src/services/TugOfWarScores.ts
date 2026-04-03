@@ -3,6 +3,7 @@ import { IMatch } from '@/models/Match';
 import { IRound2Question } from '@/models/Round2Question';
 import Match from '@/models/Match';
 import MatchSubmission from '@/models/MatchSubmission';
+import PowerUpAttempt from '@/models/PowerUpAttempt';
 import Round2Question from '@/models/Round2Question';
 import Team from '@/models/Team';
 import {
@@ -75,7 +76,7 @@ interface SyncResult {
 
 /**
  * Check win condition for a match
- * - Winner declared when threshold (75 points) is reached
+ * - Winner declared when threshold or timeout is reached
  * - On timeout: higher score wins automatically
  */
 
@@ -227,6 +228,7 @@ export async function processMatchSubmissions(
   const newSubmissions: ProcessedSubmission[] = [];
   let scoreADelta = 0;
   let scoreBDelta = 0;
+  const swapCompletionCache = new Map<string, boolean>();
 
   const matchStartTime = match.startTime ? match.startTime.getTime() / 1000 : 0;
   const validSubmissions = cfSubmissions.filter(
@@ -261,6 +263,37 @@ export async function processMatchSubmissions(
     const teamId = await getTeamIdForHandle(handle, teamIds);
 
     if (!teamId) continue;
+
+    // In Semifinals, block normal scoring until this team completes swap.
+    if (match.roundStage === 'B') {
+      const teamKey = teamId.toString();
+      let swapCompleted = swapCompletionCache.get(teamKey);
+
+      if (swapCompleted === undefined) {
+        const swapAttempt = await PowerUpAttempt.exists({
+          matchId: match._id,
+          teamId,
+          powerUpKey: 'semifinals-steal-swap',
+          verdict: 'SWAP_EXECUTED',
+        });
+        swapCompleted = Boolean(swapAttempt);
+        swapCompletionCache.set(teamKey, swapCompleted);
+      }
+
+      if (!swapCompleted) {
+        continue;
+      }
+    }
+
+    // Power-up problems are scored only by power-up service, never as normal question points.
+    const subContestId = String(sub.contestId);
+    const subProblemIndex = sub.problem.index.toUpperCase();
+    if (
+      (match.roundStage === 'B' && subContestId === '1771' && subProblemIndex === 'A') ||
+      (match.roundStage === 'C' && subContestId === '2171' && subProblemIndex === 'C1')
+    ) {
+      continue;
+    }
 
 
     if (sub.verdict === 'OK') {

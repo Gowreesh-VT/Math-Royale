@@ -27,6 +27,7 @@ interface PowerUpState {
   title: string;
   available: boolean;
   solved: boolean;
+  swapCompleted?: boolean;
   attemptCount: number;
   totalDelta: number;
   fullMarks: number;
@@ -73,7 +74,6 @@ export default function Round2MatchPage() {
   const [timeRemaining, setTimeRemaining] = useState<number>(1800);
   const [loading, setLoading] = useState(true);
   const [selectedPlayerQuestion, setSelectedPlayerQuestion] = useState<number | null>(null);
-  const [selectedOpponentQuestion, setSelectedOpponentQuestion] = useState<number | null>(null);
 
   const teamId = session?.user?.teamId || '';
 
@@ -176,7 +176,7 @@ export default function Round2MatchPage() {
   }, [data?.match?.status, fetchMatch, matchId]);
 
   const handleExecuteSwap = async () => {
-    if (selectedPlayerQuestion === null || selectedOpponentQuestion === null) {
+    if (selectedPlayerQuestion === null) {
       return;
     }
 
@@ -187,7 +187,6 @@ export default function Round2MatchPage() {
         body: JSON.stringify({
           matchId,
           playerUnansweredIndex: selectedPlayerQuestion,
-          opponentQuestionIndex: selectedOpponentQuestion,
         }),
       });
 
@@ -196,7 +195,6 @@ export default function Round2MatchPage() {
       if (result.success) {
         setShowSwapModal(false);
         setSelectedPlayerQuestion(null);
-        setSelectedOpponentQuestion(null);
         fetchMatch();
       }
     } catch (error) {
@@ -216,10 +214,15 @@ export default function Round2MatchPage() {
   const opp = mySide === 'A' ? data.match.sideB : data.match.sideA;
   const powerUp = data.match.powerUp;
   const hasRoundPowerUp = (data.match.roundNumber === 2 || data.match.roundNumber === 3) && !!powerUp?.available;
+  const isSemifinalSwapLockActive = Boolean(
+    data.match.roundNumber === 2 &&
+    powerUp?.effectLabel === 'SWAP_QUESTIONS' &&
+    !powerUp?.swapCompleted
+  );
   const powerUpLabel = data.match.roundNumber === 3 ? 'Finals Power-Up' : 'Semifinals Power-Up';
   const powerUpSummary = data.match.roundNumber === 3
     ? 'Double your points earned above 50 on one special problem. Clear it fully to double, else they are halved.'
-    : 'Swap your unanswered questions with opponent questions after solving the steal problem.';
+    : 'Replace one of your unanswered match questions with the Steal question after solving it.';
   const introTitle = data.match.roundNumber === 3 ? 'Double or Half' : 'Steal & Swap';
   const introBody = data.match.roundNumber === 3
     ? [
@@ -229,7 +232,7 @@ export default function Round2MatchPage() {
       ]
     : [
         'In Semifinals, your team can attempt a special Steal problem that is easier and adds points directly to your score.',
-        'If you solve the Steal problem, you unlock the ability to swap one of your unanswered questions with any question from the opponent.',
+        'If you solve the Steal problem, you unlock the ability to replace one of your unanswered match questions with the Steal question.',
         'All scoring still happens through Codeforces submissions on your saved handle.',
       ];
   const rewardText = powerUp?.effectLabel === 'DOUBLE_OR_HALF' ? 'Double Points' : powerUp?.effectLabel === 'SWAP_QUESTIONS' ? 'Swap Questions' : `+${powerUp?.fullMarks ?? 0}`;
@@ -241,7 +244,7 @@ export default function Round2MatchPage() {
     : 'A fixed penalty of -10 points is applied for failed attempts.';
 
   const BASE_SCORE = 50;
-  const MAX_SCORE = 75;
+  const MAX_SCORE = 2147483647;
   const WIN_RANGE = MAX_SCORE - BASE_SCORE;
 
   let pullPercentage = 50;
@@ -365,7 +368,7 @@ export default function Round2MatchPage() {
           <div className="flex justify-center gap-6 text-[10px] uppercase tracking-widest text-white/40">
             <span>✔ Accepted: +10</span>
             <span>✖ Wrong: 0</span>
-            <span>🏁 Win at 75</span>
+            <span></span>
           </div>
 
           <div className="mt-3 text-center">
@@ -405,7 +408,7 @@ export default function Round2MatchPage() {
                 onClick={() => setShowPowerUpIntro(true)}
                 className="px-5 py-3 border border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 text-amber-200 font-ui text-[10px] uppercase tracking-[0.3em] transition-all rounded-lg"
               >
-                {powerUp.solved ? 'View Steal Panel' : 'Activate Power-Up'}
+                {powerUp.swapCompleted ? 'Swap Completed' : powerUp.solved ? 'Proceed to Swap' : 'Activate Power-Up'}
               </button>
             </div>
 
@@ -433,12 +436,25 @@ export default function Round2MatchPage() {
             Your Questions
           </h2>
 
+          {isSemifinalSwapLockActive && (
+            <div className="border border-amber-400/30 bg-amber-400/10 p-4 rounded-lg">
+              <p className="text-xs uppercase tracking-widest text-amber-200">
+                Submissions are locked until you complete Steal swap. Open Power-Up, solve Steal, then replace one unanswered question.
+              </p>
+            </div>
+          )}
+
           <div className="divide-y divide-white/10 border border-white/10 bg-[#0b0b0b]">
             {my.questions.map((question, index) => (
               <div
                 key={question.id}
-                onClick={() => window.open(`https://codeforces.com/contest/${question.contestId}/problem/${question.problemIndex}`, '_blank')}
-                className="p-4 cursor-pointer hover:bg-white/5 flex justify-between items-center"
+                onClick={() => {
+                  if (isSemifinalSwapLockActive) {
+                    return;
+                  }
+                  window.open(`https://codeforces.com/contest/${question.contestId}/problem/${question.problemIndex}`, '_blank');
+                }}
+                className={`p-4 flex justify-between items-center ${isSemifinalSwapLockActive ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-white/5'}`}
               >
                 <div>
                   <p className="font-bold">
@@ -462,7 +478,7 @@ export default function Round2MatchPage() {
           <ul className="space-y-1">
             <li>✔ Correct submission: +10 points</li>
             <li>✖ Wrong answer: 0 points</li>
-            <li>🏁 Win at 75 points or timeout</li>
+            <li>🏁 Timeout concludes the match</li>
           </ul>
         </section>
       </main>
@@ -508,15 +524,19 @@ export default function Round2MatchPage() {
             </div>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <div className="border border-white/10 bg-white/5 p-4">
+              <button
+                type="button"
+                onClick={() => window.open(powerUp.question.url, '_blank')}
+                className="border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10 transition-colors"
+              >
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Target Problem</p>
                 <p className="mt-2 text-lg font-bold text-white">
                   {powerUp.question.problemIndex}. {powerUp.question.name}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-widest text-white/40">
-                  Contest {powerUp.question.contestId}
+                  Contest {powerUp.question.contestId} • Click to open on Codeforces
                 </p>
-              </div>
+              </button>
               <div className="border border-white/10 bg-white/5 p-4">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Detection</p>
                 <p className="mt-2 text-sm uppercase tracking-wider text-white/70">
@@ -562,12 +582,6 @@ export default function Round2MatchPage() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => window.open(powerUp.question.url, '_blank')}
-                    className="px-5 py-3 border border-amber-400/40 bg-amber-400/15 hover:bg-amber-400/25 text-amber-200 font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
-                  >
-                    Open on Codeforces
-                  </button>
-                  <button
                     onClick={() => setShowPowerUpOverlay(false)}
                     className="px-5 py-3 border border-white/10 bg-white/5 hover:bg-white/10 text-white font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
                   >
@@ -581,9 +595,9 @@ export default function Round2MatchPage() {
                   <div className="border border-white/10 bg-white/5 p-5">
                     <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">How to Use It</p>
                     <div className="mt-4 space-y-3 text-sm uppercase tracking-wider text-white/70">
-                      <p>Open the problem in a new tab, solve it there, and submit using the same Codeforces handle linked to your team.</p>
+                      <p>Solve the Steal problem first. You can click the target problem card in the briefing to open Codeforces.</p>
                       <p>Come back to this match screen after submitting. The live sync runs automatically every 30 seconds, so your score update will be reflected here.</p>
-                      <p>Once you solve the special problem, unlock the ability to swap one of your unanswered questions with an opponent's question.</p>
+                      <p>Once Steal is solved, choose one of your unanswered match questions to replace with the Steal question, then continue solving from Codeforces.</p>
                     </div>
                   </div>
 
@@ -683,7 +697,7 @@ export default function Round2MatchPage() {
                 Swap Questions
               </h2>
               <p className="text-sm uppercase tracking-wider text-white/60 mb-8">
-                Select one of your unanswered questions to swap with an opponent question
+                Select one of your unanswered questions to replace with the Steal question
               </p>
 
               <div className="grid gap-8 lg:grid-cols-2 mb-8">
@@ -717,38 +731,26 @@ export default function Round2MatchPage() {
                   </div>
                 </div>
 
-                {/* Opponent Questions */}
+                {/* Steal Question */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-bold uppercase tracking-widest text-amber-200">
-                    Opponent Questions
+                    Steal Question (Hardcoded)
                   </h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {opp.questions.map((question, index) => (
-                      <button
-                        key={question.id}
-                        onClick={() => setSelectedOpponentQuestion(index)}
-                        className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
-                          selectedOpponentQuestion === index
-                            ? 'border-amber-400 bg-amber-400/20'
-                            : 'border-white/10 bg-white/5 hover:bg-white/10'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-bold">
-                              {question.problemIndex}. {question.name}
-                            </p>
-                            <p className="text-xs text-white/40">
-                              Contest {question.contestId}
-                            </p>
-                          </div>
-                          <span className={`text-xs uppercase tracking-widest ${question.solved ? 'text-green-400' : 'text-white/30'}`}>
-                            {question.solved ? 'Solved' : 'Unsolved'}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => powerUp && window.open(powerUp.question.url, '_blank')}
+                    className="w-full p-4 border-2 border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 rounded-lg text-left transition-all"
+                  >
+                    <p className="font-bold text-amber-100">
+                      {powerUp?.question.problemIndex}. {powerUp?.question.name}
+                    </p>
+                    <p className="text-xs text-amber-200/70 mt-1">
+                      Contest {powerUp?.question.contestId} • Click to open on Codeforces
+                    </p>
+                    <p className="text-xs uppercase tracking-widest text-amber-200/60 mt-3">
+                      This problem will replace your selected unanswered question.
+                    </p>
+                  </button>
                 </div>
               </div>
 
@@ -757,7 +759,6 @@ export default function Round2MatchPage() {
                   onClick={() => {
                     setShowSwapModal(false);
                     setSelectedPlayerQuestion(null);
-                    setSelectedOpponentQuestion(null);
                   }}
                   className="px-6 py-3 border border-white/10 bg-white/5 hover:bg-white/10 text-white font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
                 >
@@ -765,10 +766,10 @@ export default function Round2MatchPage() {
                 </button>
                 <button
                   onClick={handleExecuteSwap}
-                  disabled={selectedPlayerQuestion === null || selectedOpponentQuestion === null}
+                  disabled={selectedPlayerQuestion === null}
                   className="px-6 py-3 border border-cyan-400/40 bg-cyan-400/15 hover:bg-cyan-400/25 disabled:opacity-50 disabled:cursor-not-allowed text-cyan-200 font-ui text-[10px] uppercase tracking-[0.3em] rounded-lg"
                 >
-                  Execute Swap
+                  Replace With Steal Question
                 </button>
               </div>
             </div>

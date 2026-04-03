@@ -1,6 +1,8 @@
 import { Types } from 'mongoose';
 import Match from '@/models/Match';
 import PowerUpAttempt from '@/models/PowerUpAttempt';
+import MatchSubmission from '@/models/MatchSubmission';
+import Round2Question from '@/models/Round2Question';
 import { checkWinCondition, getSideForHandle, getTeamIdForHandle, getTimeRemaining } from '@/services/TugOfWarScores';
 import { STEAL_POINTS_CORRECT, STEAL_POINTS_WRONG } from '@/lib/constants';
 
@@ -46,8 +48,8 @@ const POWER_UPS = [STEAL_POWER_UP, DOUBLE_OR_HALF_POWER_UP] as const;
 type PowerUpConfig = (typeof POWER_UPS)[number];
 
 interface QuestionSwap {
-  playerUnansweredIndex: string; // Index of player's unanswered question
-  opponentQuestionIndex: string; // Index of opponent's question being stolen
+  playerUnansweredIndex: string;
+  stealQuestionIndex: string;
   timestamp: Date;
 }
 
@@ -214,6 +216,14 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
 
   const solvedAttempt = attempts.find((attempt) => attempt.verdict === 'OK');
   const totalDelta = attempts.reduce((sum, attempt) => sum + attempt.pointsDelta, 0);
+  const swapCompleted = powerUp.key === STEAL_POWER_UP.key
+    ? Boolean(await PowerUpAttempt.exists({
+        matchId,
+        teamId,
+        powerUpKey: `${STEAL_POWER_UP.key}-swap`,
+        verdict: 'SWAP_EXECUTED',
+      }))
+    : false;
 
   return {
     key: powerUp.key,
@@ -226,6 +236,7 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
     },
     available: true,
     solved: Boolean(solvedAttempt),
+    swapCompleted,
     attemptCount: attempts.length,
     totalDelta,
     fullMarks: powerUp.fullMarks,
@@ -245,9 +256,8 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
  */
 export async function executeQuestionSwap(
   matchId: Types.ObjectId | string,
-  playerId: string,
-  playerUnansweredIndex: number,
-  opponentQuestionIndex: number
+  playerTeamId: string,
+  playerUnansweredIndex: number
 ): Promise<QuestionSwap | null> {
   const match = await Match.findById(matchId);
 
@@ -255,33 +265,79 @@ export async function executeQuestionSwap(
     return null;
   }
 
-  // Determine sides
-  const playerSide = match.sideA_handles.includes(playerId) ? 'A' : 'B';
-  const opponentSide = playerSide === 'A' ? 'B' : 'A';
+  if (match.status !== 'active') {
+    return null;
+  }
 
-  const playerQuestions = playerSide === 'A' ? (match as any).sideA_questions : (match as any).sideB_questions;
-  const opponentQuestions = opponentSide === 'A' ? (match as any).sideA_questions : (match as any).sideB_questions;
+  const isInSideA = match.sideA_teamIds.some((id) => id.toString() === playerTeamId);
+  const isInSideB = match.sideB_teamIds.some((id) => id.toString() === playerTeamId);
+
+  if (!isInSideA && !isInSideB) {
+    return null;
+  }
+
+  // Determine sides based on team membership
+  const playerSide = isInSideA ? 'A' : 'B';
+  const playerPool = [...(playerSide === 'A' ? match.questionPoolA : match.questionPoolB)];
 
   // Validate indices
-  if (playerUnansweredIndex >= playerQuestions.length || opponentQuestionIndex >= opponentQuestions.length) {
+  if (playerUnansweredIndex < 0 || playerUnansweredIndex >= playerPool.length) {
     return null;
   }
 
   // Verify player's question is unanswered
-  if (playerQuestions[playerUnansweredIndex].solved) {
+  const playerQuestionId = playerPool[playerUnansweredIndex];
+  const alreadySolved = await MatchSubmission.exists({
+    matchId: match._id,
+    teamId: new Types.ObjectId(playerTeamId),
+    questionId: playerQuestionId,
+    verdict: 'OK',
+  });
+
+  if (alreadySolved) {
     return null;
   }
 
-  // Swap the questions
-  const tempQuestion = playerQuestions[playerUnansweredIndex];
-  playerQuestions[playerUnansweredIndex] = opponentQuestions[opponentQuestionIndex];
-  opponentQuestions[opponentQuestionIndex] = tempQuestion;
+  // Replace selected unanswered match question with hardcoded Steal question.
+  const stealQuestion = await Round2Question.findOneAndUpdate(
+    {
+      contestId: STEAL_POWER_UP.contestId,
+      problemIndex: STEAL_POWER_UP.problemIndex,
+    },
+    {
+      $setOnInsert: {
+        roundNumber: 2,
+        side: 'A',
+        name: STEAL_POWER_UP.name,
+        url: STEAL_POWER_UP.url,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+    }
+  );
+
+  if (!stealQuestion) {
+    return null;
+  }
+
+  playerPool[playerUnansweredIndex] = stealQuestion._id as Types.ObjectId;
+
+  if (playerSide === 'A') {
+    match.questionPoolA = playerPool;
+  } else {
+    match.questionPoolB = playerPool;
+  }
 
   await match.save();
 
+  const swappedInQuestion = await Round2Question.findById(playerPool[playerUnansweredIndex])
+    .select('problemIndex')
+    .lean();
   return {
-    playerUnansweredIndex: playerQuestions[playerUnansweredIndex].problemIndex,
-    opponentQuestionIndex: opponentQuestions[opponentQuestionIndex].problemIndex,
+    playerUnansweredIndex: swappedInQuestion?.problemIndex || '',
+    stealQuestionIndex: STEAL_POWER_UP.problemIndex,
     timestamp: new Date(),
   };
 }

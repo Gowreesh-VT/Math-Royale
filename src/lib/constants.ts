@@ -9,7 +9,7 @@ export const POINTS_PER_PROBLEM = 10;
 export const TOW_INITIAL_SCORE = 50;
 export const TOW_POINTS_CORRECT = 10;
 export const TOW_POINTS_WRONG = 0;
-export const TOW_WIN_THRESHOLD = 75;
+export const TOW_WIN_THRESHOLD = 2147483647;
 
 // Scoring - Steal Power-Up (Round 2)
 export const STEAL_POINTS_CORRECT = 10;
