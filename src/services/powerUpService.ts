@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import Match from '@/models/Match';
 import PowerUpAttempt from '@/models/PowerUpAttempt';
 import { checkWinCondition, getSideForHandle, getTeamIdForHandle, getTimeRemaining } from '@/services/TugOfWarScores';
+import { STEAL_POINTS_CORRECT, STEAL_POINTS_WRONG } from '@/lib/constants';
 
 interface CFSubmission {
   id: number;
@@ -16,7 +17,6 @@ interface CFSubmission {
     members: Array<{ handle: string }>;
   };
   verdict?: string;
-  passedTestCount?: number;
 }
 
 export const STEAL_POWER_UP = {
@@ -27,13 +27,13 @@ export const STEAL_POWER_UP = {
   problemIndex: 'A',
   name: 'Hossam and Combinatorics',
   url: 'https://codeforces.com/problemset/problem/1771/A',
-  fullMarks: 10,
+  fullMarks: STEAL_POINTS_CORRECT,
 };
 
-export const DOUBLE_OR_NOTHING_POWER_UP = {
+export const DOUBLE_OR_HALF_POWER_UP = {
   roundStage: 'C',
-  key: 'finals-double-or-nothing',
-  title: 'Double or Nothing',
+  key: 'finals-double-or-half',
+  title: 'Double or Half',
   contestId: '2171',
   problemIndex: 'C1',
   name: 'A Gift From Orangutan',
@@ -41,7 +41,7 @@ export const DOUBLE_OR_NOTHING_POWER_UP = {
   fullMarks: 0,
 };
 
-const POWER_UPS = [STEAL_POWER_UP, DOUBLE_OR_NOTHING_POWER_UP] as const;
+const POWER_UPS = [STEAL_POWER_UP, DOUBLE_OR_HALF_POWER_UP] as const;
 
 type PowerUpConfig = (typeof POWER_UPS)[number];
 
@@ -56,10 +56,8 @@ function isPowerUpSubmission(submission: CFSubmission, powerUp: PowerUpConfig) {
   );
 }
 
-function calculateStealPenalty(submission: CFSubmission) {
-  // Codeforces exposes `passedTestCount`, not total failed tests, so we approximate
-  // the deduction by the first failed test index. This keeps the penalty progressive.
-  return -Math.max(1, (submission.passedTestCount ?? 0) + 1);
+function calculateStealPenalty() {
+  return STEAL_POINTS_WRONG;
 }
 
 export async function processStealPowerUpSubmissions(
@@ -131,12 +129,15 @@ export async function processStealPowerUpSubmissions(
     if (powerUp.key === STEAL_POWER_UP.key) {
       pointsDelta = submission.verdict === 'OK'
         ? STEAL_POWER_UP.fullMarks
-        : calculateStealPenalty(submission);
-    } else if (powerUp.key === DOUBLE_OR_NOTHING_POWER_UP.key) {
+        : calculateStealPenalty();
+    } else if (powerUp.key === DOUBLE_OR_HALF_POWER_UP.key) {
+      const currentScore = side === 'A' ? match.scoreA : match.scoreB;
+      const earned = Math.max(0, currentScore - 50);
+      
       if (submission.verdict === 'OK') {
-        pointsDelta = side === 'A' ? match.scoreA : match.scoreB;
+        pointsDelta = earned;
       } else {
-        pointsDelta = 0;
+        pointsDelta = -(earned - Math.floor(earned / 2));
       }
     }
 
@@ -150,7 +151,6 @@ export async function processStealPowerUpSubmissions(
       problemIndex: powerUp.problemIndex,
       submissionId: submission.id,
       verdict: submission.verdict || 'UNKNOWN',
-      passedTestCount: submission.passedTestCount ?? 0,
       pointsDelta,
       timestamp: new Date(submission.creationTimeSeconds * 1000),
     });
@@ -223,11 +223,10 @@ export async function getStealPowerUpState(matchId: Types.ObjectId | string, tea
     attemptCount: attempts.length,
     totalDelta,
     fullMarks: powerUp.fullMarks,
-    effectLabel: powerUp.key === DOUBLE_OR_NOTHING_POWER_UP.key ? 'DOUBLE_CURRENT_SCORE' : 'ADD_POINTS',
+    effectLabel: powerUp.key === DOUBLE_OR_HALF_POWER_UP.key ? 'DOUBLE_OR_HALF' : 'ADD_POINTS',
     attempts: attempts.map((attempt) => ({
       submissionId: attempt.submissionId,
       verdict: attempt.verdict,
-      passedTestCount: attempt.passedTestCount,
       pointsDelta: attempt.pointsDelta,
       timestamp: attempt.timestamp,
     })),

@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
+import { TOW_INITIAL_SCORE, ROUND_A_DURATION } from '../lib/constants';
 
 /**
  * Match Interface - Updated for Multi-Round Format (A, B, C)
@@ -72,12 +73,12 @@ const MatchSchema = new Schema<IMatch>(
     scoreA: {
       type: Number,
       required: true,
-      default: 50,
+      default: TOW_INITIAL_SCORE,
     },
     scoreB: {
       type: Number,
       required: true,
-      default: 50,
+      default: TOW_INITIAL_SCORE,
     },
     
     status: {
@@ -111,7 +112,7 @@ const MatchSchema = new Schema<IMatch>(
     duration: {
       type: Number,
       required: true,
-      default: 2700,
+      default: ROUND_A_DURATION,
     },
   },
   {

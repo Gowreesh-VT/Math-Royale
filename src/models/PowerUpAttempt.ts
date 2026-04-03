@@ -10,7 +10,6 @@ export interface IPowerUpAttempt extends Document {
   problemIndex: string;
   submissionId: number;
   verdict: string;
-  passedTestCount: number;
   pointsDelta: number;
   timestamp: Date;
   createdAt: Date;
@@ -63,11 +62,6 @@ const PowerUpAttemptSchema = new Schema<IPowerUpAttempt>(
       type: String,
       required: true,
       trim: true,
-    },
-    passedTestCount: {
-      type: Number,
-      required: true,
-      default: 0,
     },
     pointsDelta: {
       type: Number,
