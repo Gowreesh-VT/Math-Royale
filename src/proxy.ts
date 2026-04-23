@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
         `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
         `font-src 'self' https://fonts.gstatic.com`,
         `img-src 'self' data: https: blob:`,
-        `connect-src 'self' https://codeforces.com https://accounts.google.com ws: wss:`,
+        `connect-src 'self' https://codeforces.com https://www.hackerrank.com https://accounts.google.com ws: wss:`,
         `frame-ancestors 'none'`,
         `form-action 'self'`,
         `base-uri 'self'`,
